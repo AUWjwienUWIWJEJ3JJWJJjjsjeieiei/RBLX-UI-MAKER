@@ -1,58 +1,159 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Roblox UI Code Generator</title>
+  <title>Roblox UI Maker</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    .preview { border: 1px solid #aaa; width: 400px; height: 300px; position: relative; }
-    .ui-element { position: absolute; border: 1px dashed #555; background-color: rgba(0,0,0,0.1); }
-    textarea { width: 100%; height: 200px; margin-top: 10px; }
+    body { font-family: sans-serif; display: flex; gap: 20px; padding: 20px; }
+    .preview { border: 1px solid #aaa; width: 500px; height: 400px; position: relative; }
+    .ui-element {
+      position: absolute;
+      border: 1px dashed #333;
+      background-color: rgba(0,0,0,0.1);
+      cursor: pointer;
+    }
+    #panel {
+      width: 300px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    label { font-weight: bold; }
+    textarea { width: 100%; height: 200px; }
   </style>
 </head>
 <body>
 
-<h2>Roblox UI Code Generator</h2>
-<button onclick="addElement()">Add Frame</button>
+<div>
+  <h2>Roblox UI Maker</h2>
+  <label>Instance Type:
+    <select id="instanceType">
+      <option value="Frame">Frame</option>
+      <option value="TextLabel">TextLabel</option>
+      <option value="TextButton">TextButton</option>
+      <option value="ImageLabel">ImageLabel</option>
+    </select>
+  </label>
+  <button onclick="addElement()">Add Element</button>
+  <div class="preview" id="preview"></div>
+</div>
 
-<div class="preview" id="preview"></div>
-
-<h3>Generated Lua Code</h3>
-<textarea id="output"></textarea>
+<div id="panel">
+  <h3>Selected Element</h3>
+  <label>Name: <input id="propName"></label>
+  <label>Position X: <input id="propLeft" type="number"></label>
+  <label>Position Y: <input id="propTop" type="number"></label>
+  <label>Width: <input id="propWidth" type="number"></label>
+  <label>Height: <input id="propHeight" type="number"></label>
+  <label>BG Color (RGB): <input id="propColor" placeholder="255,255,255"></label>
+  <label>Text: <input id="propText"></label>
+  <label>Image URL: <input id="propImage"></label>
+  <button onclick="applyProperties()">Apply</button>
+  <h3>Generated Lua Code</h3>
+  <textarea id="output"></textarea>
+</div>
 
 <script>
 let elementId = 0;
+let selected = null;
+let currentParent = null;
+
 function addElement() {
+  const type = document.getElementById("instanceType").value;
   elementId++;
+
   const el = document.createElement("div");
   el.className = "ui-element";
+  el.dataset.id = elementId;
+  el.dataset.type = type;
+  el.dataset.name = `${type}${elementId}`;
   el.style.width = "100px";
   el.style.height = "50px";
-  el.style.left = "150px";
-  el.style.top = "120px";
-  el.dataset.id = elementId;
-  el.onclick = () => generateCode();
-  document.getElementById("preview").appendChild(el);
+  el.style.left = "50px";
+  el.style.top = "50px";
+
+  el.onclick = (e) => {
+    e.stopPropagation();
+    selected = el;
+    currentParent = el; // set as parent for future elements
+    updatePropertyPanel();
+    generateCode();
+  };
+
+  const parent = currentParent || document.getElementById("preview");
+  parent.appendChild(el);
+  el.dataset.parent = currentParent?.dataset.id || "ScreenGui";
   generateCode();
+}
+
+function applyProperties() {
+  if (!selected) return;
+  selected.dataset.name = document.getElementById("propName").value;
+  selected.style.left = document.getElementById("propLeft").value + "px";
+  selected.style.top = document.getElementById("propTop").value + "px";
+  selected.style.width = document.getElementById("propWidth").value + "px";
+  selected.style.height = document.getElementById("propHeight").value + "px";
+  selected.dataset.color = document.getElementById("propColor").value;
+  selected.dataset.text = document.getElementById("propText").value;
+  selected.dataset.image = document.getElementById("propImage").value;
+  generateCode();
+}
+
+function updatePropertyPanel() {
+  if (!selected) return;
+  document.getElementById("propName").value = selected.dataset.name;
+  document.getElementById("propLeft").value = parseInt(selected.style.left);
+  document.getElementById("propTop").value = parseInt(selected.style.top);
+  document.getElementById("propWidth").value = parseInt(selected.style.width);
+  document.getElementById("propHeight").value = parseInt(selected.style.height);
+  document.getElementById("propColor").value = selected.dataset.color || "255,255,255";
+  document.getElementById("propText").value = selected.dataset.text || "";
+  document.getElementById("propImage").value = selected.dataset.image || "";
 }
 
 function generateCode() {
   const preview = document.getElementById("preview");
-  const elements = preview.querySelectorAll(".ui-element");
-  let code = `local ScreenGui = Instance.new("ScreenGui")\n`;
-  elements.forEach((el, idx) => {
+  const all = preview.querySelectorAll(".ui-element");
+  const elements = Array.from(all);
+
+  const codeMap = {};
+  elements.forEach(el => {
+    const name = el.dataset.name;
+    const type = el.dataset.type;
     const left = parseInt(el.style.left);
     const top = parseInt(el.style.top);
     const width = parseInt(el.style.width);
     const height = parseInt(el.style.height);
-    const name = `Frame${idx+1}`;
-    code += `local ${name} = Instance.new("Frame")\n`;
-    code += `${name}.Size = UDim2.new(0, ${width}, 0, ${height})\n`;
-    code += `${name}.Position = UDim2.new(0, ${left}, 0, ${top})\n`;
-    code += `${name}.BackgroundColor3 = Color3.fromRGB(255, 255, 255)\n`;
-    code += `${name}.Parent = ScreenGui\n\n`;
+    const [r, g, b] = (el.dataset.color || "255,255,255").split(",").map(n => parseInt(n));
+    const text = el.dataset.text || "";
+    const image = el.dataset.image || "";
+    const parent = el.dataset.parent;
+
+    let props = `local ${name} = Instance.new("${type}")\n`;
+    props += `${name}.Size = UDim2.new(0, ${width}, 0, ${height})\n`;
+    props += `${name}.Position = UDim2.new(0, ${left}, 0, ${top})\n`;
+    props += `${name}.BackgroundColor3 = Color3.fromRGB(${r}, ${g}, ${b})\n`;
+    if (text && (type === "TextLabel" || type === "TextButton")) props += `${name}.Text = "${text}"\n`;
+    if (image && type === "ImageLabel") props += `${name}.Image = "${image}"\n`;
+    props += `${name}.Parent = ${parent}\n\n`;
+
+    codeMap[name] = props;
   });
+
+  let code = "local ScreenGui = Instance.new(\"ScreenGui\")\n";
+  elements.forEach(el => {
+    const name = el.dataset.name;
+    code += codeMap[name];
+  });
+
   document.getElementById("output").value = code;
 }
+
+// Allow clicking blank area to deselect
+document.getElementById("preview").onclick = () => {
+  selected = null;
+  currentParent = null;
+  document.getElementById("propName").value = "";
+};
 </script>
 
 </body>
