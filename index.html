@@ -1,92 +1,32 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Roblox UI Builder</title>
+  <title>Roblox UI Builder w/ Icons & Containers</title>
   <style>
-    body {
-      font-family: sans-serif;
-      display: flex;
-      gap: 20px;
-      padding: 20px;
-    }
-    .preview {
-      border: 1px solid #aaa;
-      width: 500px;
-      height: 400px;
-      position: relative;
-      background: #f4f4f4;
-    }
-    .ui-element {
-      position: absolute;
-      border: 1px solid #444;
-      background-color: rgba(0, 0, 0, 0.1);
-    }
-    .drag-handle, .resize-handle {
-      width: 16px;
-      height: 16px;
-      position: absolute;
-      background-color: #444;
-      color: white;
-      font-size: 10px;
-      text-align: center;
-      line-height: 16px;
-      cursor: pointer;
-    }
-    .drag-handle {
-      top: 0;
-      left: 0;
-      background: #555;
-    }
-    .resize-handle {
-      bottom: 0;
-      right: 0;
-      background: #888;
-      cursor: nwse-resize;
-    }
-    #panel {
-      width: 300px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    label {
-      font-weight: bold;
-    }
-    textarea {
-      width: 100%;
-      height: 200px;
-    }
-    #explorer {
-      font-size: 14px;
-      width: 180px;
-      border: 1px solid #ccc;
-      height: 400px;
-      overflow-y: auto;
-      background: #fff;
-      padding: 5px;
-    }
-    .explorer-item {
-      padding: 3px;
-      cursor: pointer;
-    }
-    .explorer-item:hover {
-      background: #eee;
-    }
-    .selected {
-      outline: 2px solid red;
-    }
+    body { font-family: sans-serif; display: flex; gap: 20px; padding: 20px; }
+    .preview { border:1px solid #aaa; width:500px; height:400px; position:relative; background:#f4f4f4; }
+    .ui-element { position:absolute; border:1px solid #444; background:rgba(0,0,0,0.1); }
+    .drag-handle, .resize-handle { width:16px; height:16px; position:absolute; font-size:10px; text-align:center; line-height:16px; }
+    .drag-handle { top:0; left:0; background:#555; cursor:move; }
+    .resize-handle { bottom:0; right:0; background:#888; cursor:nwse-resize; }
+    #explorer { width:200px; border:1px solid #ccc; height:400px; overflow:auto; background:#fff; padding:5px;}
+    .explorer-item { padding:3px; cursor:pointer; user-select:none; display:flex; align-items:center; }
+    .explorer-item.selected { background:#def; }
+    .explorer-item .icon { width:16px; height:16px; margin-right:4px; }
+    #panel { width:300px; display:flex; flex-direction:column; gap:8px; }
+    textarea { width:100%; height:200px; }
+    .context-menu { position:absolute; background:#fff; border:1px solid #ccc; z-index:1000; }
+    .context-menu div { padding:4px 8px; cursor:pointer; }
+    .context-menu div:hover { background:#eee; }
   </style>
 </head>
 <body>
 
 <div>
-  <h2>Roblox UI Builder</h2>
-  <label>Instance Type:
+  <h2>UI Builder</h2>
+  <label>Type:
     <select id="instanceType">
-      <option value="Frame">Frame</option>
-      <option value="TextLabel">TextLabel</option>
-      <option value="TextButton">TextButton</option>
-      <option value="ImageLabel">ImageLabel</option>
+      <option>Frame</option><option>TextLabel</option><option>TextButton</option><option>ImageLabel</option><option>Folder</option><option>Model</option>
     </select>
   </label>
   <button onclick="addElement()">Add Element</button>
@@ -103,181 +43,138 @@
   <label>Name: <input id="propName"></label>
   <label>X: <input id="propLeft" type="number"></label>
   <label>Y: <input id="propTop" type="number"></label>
-  <label>Width: <input id="propWidth" type="number"></label>
-  <label>Height: <input id="propHeight" type="number"></label>
-  <label>BG Color (RGB): <input id="propColor" placeholder="255,255,255"></label>
+  <label>W: <input id="propWidth" type="number"></label>
+  <label>H: <input id="propHeight" type="number"></label>
+  <label>Color (R,G,B): <input id="propColor" placeholder="255,255,255"></label>
   <label>Text: <input id="propText"></label>
   <label>Image URL: <input id="propImage"></label>
   <button onclick="applyProperties()">Apply</button>
-  <h3>Generated Lua</h3>
+  <h3>Lua Code</h3>
   <textarea id="output"></textarea>
 </div>
 
 <script>
-let elementId = 0;
-let selected = null;
-let currentParent = null;
+let elementId=0, selected=null, currentParent=null, clipboard=null;
 
 function addElement() {
-  const type = document.getElementById("instanceType").value;
+  const type=document.getElementById("instanceType").value;
   elementId++;
+  const e=document.createElement("div");
+  e.className="ui-element";
+  e.dataset={}.id=elementId;
+  Object.assign(e.dataset,{id:elementId,type,name:`${type}${elementId}`,parent:currentParent?.dataset.id||"ScreenGui"});
+  ['left','top','width','height'].forEach(p=>e.style[p]= {'left':'50px','top':'50px','width':'100px','height':'50px'}[p]);
+  ['color','text','image'].forEach(p=>delete e.dataset[p]);
+  const drag=document.createElement("div"), resize=document.createElement("div");
+  drag.className="drag-handle"; drag.innerText="≡"; e.appendChild(drag);
+  resize.className="resize-handle"; resize.innerText="↘"; e.appendChild(resize);
+  drag.onmousedown=e=>startDrag(e.target.parentElement);
+  resize.onmousedown=e=>startResize(e.target.parentElement);
+  e.onclick=ev=>{ev.stopPropagation(); selectElement(e, true)};
+  (currentParent||document.getElementById("preview")).appendChild(e);
+  refresh();
+}
 
-  const wrapper = document.createElement("div");
-  wrapper.className = "ui-element";
-  wrapper.dataset.id = elementId;
-  wrapper.dataset.type = type;
-  wrapper.dataset.name = `${type}${elementId}`;
-  wrapper.style.left = "50px";
-  wrapper.style.top = "50px";
-  wrapper.style.width = "100px";
-  wrapper.style.height = "50px";
-  wrapper.dataset.parent = currentParent?.dataset.id || "ScreenGui";
+function selectElement(el, focusExplorer){
+  selected=el; currentParent=el; updatePanel(); highlight(); if(focusExplorer) refreshExplorer();
+}
 
-  const drag = document.createElement("div");
-  drag.className = "drag-handle";
-  drag.innerText = "≡";
-  wrapper.appendChild(drag);
+function startDrag(el){
+  const ref=el.parentElement.getBoundingClientRect();
+  const offsetX=parseInt(el.style.left), offsetY=parseInt(el.style.top);
+  function mv(e){ el.style.left=(e.clientX-ref.left-offsetX)+'px'; el.style.top=(e.clientY-ref.top-offsetY)+'px'; updatePanel(); generateCode();}
+  document.addEventListener('mousemove',mv);document.addEventListener('mouseup',()=>document.removeEventListener('mousemove',mv),{once:true});
+}
 
-  const resize = document.createElement("div");
-  resize.className = "resize-handle";
-  resize.innerText = "↘";
-  wrapper.appendChild(resize);
+function startResize(el){
+  const startX=event.clientX,startY=event.clientY,startW=parseInt(el.style.width),startH=parseInt(el.style.height);
+  function mv(e){el.style.width=startW+(e.clientX-startX)+'px'; el.style.height=startH+(e.clientY-startY)+'px';updatePanel();generateCode();}
+  document.addEventListener('mousemove',mv);document.addEventListener('mouseup',()=>document.removeEventListener('mousemove',mv),{once:true});
+}
 
-  drag.onmousedown = (e) => startDrag(e, wrapper);
-  resize.onmousedown = (e) => startResize(e, wrapper);
+function updatePanel(){
+  if(!selected)return;
+  ['Name','Left','Top','Width','Height','Color','Text','Image'].forEach(prop=>{
+    document.getElementById('prop'+prop).value=selected.dataset[prop.toLowerCase()]||{'Color':'255,255,255'}[prop]||selected.style[prop.toLowerCase()]?.replace('px','')||'';
+  });
+}
 
-  wrapper.onclick = (e) => {
-    e.stopPropagation();
-    selected = wrapper;
-    currentParent = wrapper;
-    updatePropertyPanel();
-    highlightSelected();
-    generateCode();
+function applyProperties(){
+  if(!selected)return;
+  ['Name','Left','Top','Width','Height','Color','Text','Image'].forEach(prop=>{
+    const val=document.getElementById('prop'+prop).value;
+    if(['Left','Top','Width','Height'].includes(prop))selected.style[prop.toLowerCase()]=val+'px';
+    else selected.dataset[prop.toLowerCase()]=val;
+  });
+  refresh();
+}
+
+function highlight(){document.querySelectorAll('.ui-element').forEach(e=>e.classList.toggle('selected',e===selected));}
+
+function refresh(){
+  generateCode(); refreshExplorer(); highlight();
+}
+
+function generateCode(){
+  const items=[...document.querySelectorAll('.ui-element')];
+  let map={} ;
+  items.forEach(e=>{
+    const nm=e.dataset.name, t=e.dataset.type, l=parseInt(e.style.left), tP=parseInt(e.style.top),
+          w=parseInt(e.style.width), h=parseInt(e.style.height),
+          [r,g,b]=(e.dataset.color||'255,255,255').split(',').map(Number),
+          txt=e.dataset.text||'', img=e.dataset.image||'', par=e.dataset.parent;
+    let s=`local ${nm}=Instance.new("${t}")\n${nm}.Size=UDim2.new(0,${w},0,${h})\n${nm}.Position=UDim2.new(0,${l},0,${tP})\n${nm}.BackgroundColor3=Color3.fromRGB(${r},${g},${b})\n`;
+    if(txt && /Text(Label|Button)/.test(t)) s+=`${nm}.Text="${txt}"\n`;
+    if(img && t==='ImageLabel') s+=`${nm}.Image="${img}"\n`;
+    s+=`${nm}.Parent=${par}\n\n`;
+    map[nm]=s;
+  });
+  document.getElementById('output').value='local ScreenGui=Instance.new("ScreenGui")\n'+Object.values(map).join('');
+}
+
+function refreshExplorer(){
+  const root=document.getElementById('explorerList');
+  root.innerHTML='';
+  const build=(parentId, container)=>{
+    document.querySelectorAll('.ui-element').forEach(e=>{
+      if(e.dataset.parent===parentId){
+        const div=document.createElement('div');
+        div.className='explorer-item'; if(e===selected)div.classList.add('selected');
+        div.innerHTML=`<span class="icon">📦</span><span>${e.dataset.name}</span>`;
+        div.oncontextmenu=evt=>{
+          evt.preventDefault(); showContext(evt.pageX,evt.pageY,e);
+        };
+        div.onclick=()=>selectElement(e,false);
+        container.appendChild(div);
+        build(e.dataset.id,container);
+      }
+    });
   };
-
-  (currentParent || document.getElementById("preview")).appendChild(wrapper);
-  generateExplorer();
-  generateCode();
+  build('ScreenGui',root);
 }
 
-function startDrag(e, el) {
-  e.preventDefault();
-  let offsetX = e.clientX - el.getBoundingClientRect().left;
-  let offsetY = e.clientY - el.getBoundingClientRect().top;
-  function move(ev) {
-    el.style.left = (ev.clientX - offsetX - el.parentElement.getBoundingClientRect().left) + "px";
-    el.style.top = (ev.clientY - offsetY - el.parentElement.getBoundingClientRect().top) + "px";
-    updatePropertyPanel();
-    generateCode();
-  }
-  function stop() {
-    document.removeEventListener("mousemove", move);
-    document.removeEventListener("mouseup", stop);
-  }
-  document.addEventListener("mousemove", move);
-  document.addEventListener("mouseup", stop);
-}
-
-function startResize(e, el) {
-  e.preventDefault();
-  const startX = e.clientX;
-  const startY = e.clientY;
-  const startWidth = parseInt(el.style.width);
-  const startHeight = parseInt(el.style.height);
-  function resize(ev) {
-    el.style.width = startWidth + (ev.clientX - startX) + "px";
-    el.style.height = startHeight + (ev.clientY - startY) + "px";
-    updatePropertyPanel();
-    generateCode();
-  }
-  function stop() {
-    document.removeEventListener("mousemove", resize);
-    document.removeEventListener("mouseup", stop);
-  }
-  document.addEventListener("mousemove", resize);
-  document.addEventListener("mouseup", stop);
-}
-
-function updatePropertyPanel() {
-  if (!selected) return;
-  document.getElementById("propName").value = selected.dataset.name;
-  document.getElementById("propLeft").value = parseInt(selected.style.left);
-  document.getElementById("propTop").value = parseInt(selected.style.top);
-  document.getElementById("propWidth").value = parseInt(selected.style.width);
-  document.getElementById("propHeight").value = parseInt(selected.style.height);
-  document.getElementById("propColor").value = selected.dataset.color || "255,255,255";
-  document.getElementById("propText").value = selected.dataset.text || "";
-  document.getElementById("propImage").value = selected.dataset.image || "";
-}
-
-function applyProperties() {
-  if (!selected) return;
-  selected.dataset.name = document.getElementById("propName").value;
-  selected.style.left = document.getElementById("propLeft").value + "px";
-  selected.style.top = document.getElementById("propTop").value + "px";
-  selected.style.width = document.getElementById("propWidth").value + "px";
-  selected.style.height = document.getElementById("propHeight").value + "px";
-  selected.dataset.color = document.getElementById("propColor").value;
-  selected.dataset.text = document.getElementById("propText").value;
-  selected.dataset.image = document.getElementById("propImage").value;
-  generateCode();
-  generateExplorer();
-}
-
-function highlightSelected() {
-  document.querySelectorAll(".ui-element").forEach(e => e.classList.remove("selected"));
-  if (selected) selected.classList.add("selected");
-}
-
-function generateCode() {
-  const all = document.querySelectorAll(".ui-element");
-  let codeMap = {};
-  all.forEach(el => {
-    const name = el.dataset.name;
-    const type = el.dataset.type;
-    const left = parseInt(el.style.left);
-    const top = parseInt(el.style.top);
-    const width = parseInt(el.style.width);
-    const height = parseInt(el.style.height);
-    const [r, g, b] = (el.dataset.color || "255,255,255").split(",").map(n => parseInt(n));
-    const text = el.dataset.text || "";
-    const image = el.dataset.image || "";
-    const parent = el.dataset.parent;
-
-    let props = `local ${name} = Instance.new("${type}")\n`;
-    props += `${name}.Size = UDim2.new(0, ${width}, 0, ${height})\n`;
-    props += `${name}.Position = UDim2.new(0, ${left}, 0, ${top})\n`;
-    props += `${name}.BackgroundColor3 = Color3.fromRGB(${r}, ${g}, ${b})\n`;
-    if (text && (type === "TextLabel" || type === "TextButton")) props += `${name}.Text = "${text}"\n`;
-    if (image && type === "ImageLabel") props += `${name}.Image = "${image}"\n`;
-    props += `${name}.Parent = ${parent}\n\n`;
-
-    codeMap[name] = props;
-  });
-
-  let code = `local ScreenGui = Instance.new("ScreenGui")\n`;
-  for (let name in codeMap) code += codeMap[name];
-  document.getElementById("output").value = code;
-}
-
-function generateExplorer() {
-  const explorer = document.getElementById("explorerList");
-  explorer.innerHTML = "";
-  document.querySelectorAll(".ui-element").forEach(el => {
-    const item = document.createElement("div");
-    item.className = "explorer-item";
-    item.textContent = el.dataset.name;
-    item.onclick = () => {
-      selected = el;
-      currentParent = el;
-      updatePropertyPanel();
-      highlightSelected();
-      generateCode();
+function showContext(x,y,el){
+  const cm=document.createElement('div');
+  cm.className='context-menu';
+  ['Cut','Copy','Paste','Rename','Delete'].forEach(cmd=>{
+    const it=document.createElement('div');
+    it.innerText=cmd;
+    it.onclick=()=>{
+      document.body.removeChild(cm);
+      switch(cmd){
+        case 'Cut':clipboard={el,mode:'cut'};break;
+        case 'Copy':clipboard={el,mode:'copy'};break;
+        case 'Paste': if(clipboard){ const clone=clipboard.mode==='copy'?clipboard.el.cloneNode(true):clipboard.el; if(clipboard.mode==='cut'){clipboard.el.dataset.parent=el.dataset.id;} else{clone.dataset.id=++elementId;el.parentElement.appendChild(clone);} refresh(); }break;
+        case 'Rename':{const n=prompt('Name?',el.dataset.name);if(n){el.dataset.name=n;refresh();}}break;
+        case 'Delete':el.parentElement.removeChild(el);if(selected===el)selected=null;refresh();break;
+      }
     };
-    explorer.appendChild(item);
+    cm.appendChild(it);
   });
+  cm.style.left=x+'px';cm.style.top=y+'px';
+  document.body.appendChild(cm);
+  document.addEventListener('click',()=>{if(document.body.contains(cm))document.body.removeChild(cm);}, {once:true});
 }
-</script>
 
-</body>
-</html>
+document.getElementById('preview').onclick=()=>{selected=null;currentParent=null;refresh();}
+</script>
