@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Roblox UI Code Generator</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    .preview { border: 1px solid #aaa; width: 400px; height: 300px; position: relative; }
+    .ui-element { position: absolute; border: 1px dashed #555; background-color: rgba(0,0,0,0.1); }
+    textarea { width: 100%; height: 200px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+<h2>Roblox UI Code Generator</h2>
+<button onclick="addElement()">Add Frame</button>
+
+<div class="preview" id="preview"></div>
+
+<h3>Generated Lua Code</h3>
+<textarea id="output"></textarea>
+
+<script>
+let elementId = 0;
+function addElement() {
+  elementId++;
+  const el = document.createElement("div");
+  el.className = "ui-element";
+  el.style.width = "100px";
+  el.style.height = "50px";
+  el.style.left = "150px";
+  el.style.top = "120px";
+  el.dataset.id = elementId;
+  el.onclick = () => generateCode();
+  document.getElementById("preview").appendChild(el);
+  generateCode();
+}
+
+function generateCode() {
+  const preview = document.getElementById("preview");
+  const elements = preview.querySelectorAll(".ui-element");
+  let code = `local ScreenGui = Instance.new("ScreenGui")\n`;
+  elements.forEach((el, idx) => {
+    const left = parseInt(el.style.left);
+    const top = parseInt(el.style.top);
+    const width = parseInt(el.style.width);
+    const height = parseInt(el.style.height);
+    const name = `Frame${idx+1}`;
+    code += `local ${name} = Instance.new("Frame")\n`;
+    code += `${name}.Size = UDim2.new(0, ${width}, 0, ${height})\n`;
+    code += `${name}.Position = UDim2.new(0, ${left}, 0, ${top})\n`;
+    code += `${name}.BackgroundColor3 = Color3.fromRGB(255, 255, 255)\n`;
+    code += `${name}.Parent = ScreenGui\n\n`;
+  });
+  document.getElementById("output").value = code;
+}
+</script>
+
+</body>
+</html>
