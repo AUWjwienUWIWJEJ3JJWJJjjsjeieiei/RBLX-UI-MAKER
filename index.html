@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Roblox UI Builder w/ Icons & Containers</title>
+  <title>Roblox UI Builder</title>
   <style>
     body { font-family: sans-serif; display: flex; gap: 20px; padding: 20px; }
     .preview { border:1px solid #aaa; width:500px; height:400px; position:relative; background:#f4f4f4; }
@@ -9,15 +9,13 @@
     .drag-handle, .resize-handle { width:16px; height:16px; position:absolute; font-size:10px; text-align:center; line-height:16px; }
     .drag-handle { top:0; left:0; background:#555; cursor:move; }
     .resize-handle { bottom:0; right:0; background:#888; cursor:nwse-resize; }
-    #explorer { width:200px; border:1px solid #ccc; height:400px; overflow:auto; background:#fff; padding:5px;}
-    .explorer-item { padding:3px; cursor:pointer; user-select:none; display:flex; align-items:center; }
+    #explorer { width:220px; border:1px solid #ccc; height:400px; overflow:auto; background:#fff; padding:5px;}
+    .explorer-item { padding:2px 4px; cursor:pointer; display:flex; align-items:center; user-select:none; }
     .explorer-item.selected { background:#def; }
-    .explorer-item .icon { width:16px; height:16px; margin-right:4px; }
+    .icon { width:16px; text-align:center; user-select:none; }
+    .toggle { width:16px; cursor:pointer; }
     #panel { width:300px; display:flex; flex-direction:column; gap:8px; }
     textarea { width:100%; height:200px; }
-    .context-menu { position:absolute; background:#fff; border:1px solid #ccc; z-index:1000; }
-    .context-menu div { padding:4px 8px; cursor:pointer; }
-    .context-menu div:hover { background:#eee; }
   </style>
 </head>
 <body>
@@ -26,7 +24,8 @@
   <h2>UI Builder</h2>
   <label>Type:
     <select id="instanceType">
-      <option>Frame</option><option>TextLabel</option><option>TextButton</option><option>ImageLabel</option><option>Folder</option><option>Model</option>
+      <option>Frame</option><option>TextLabel</option><option>TextButton</option>
+      <option>ImageLabel</option><option>Folder</option><option>Model</option>
     </select>
   </label>
   <button onclick="addElement()">Add Element</button>
@@ -40,141 +39,140 @@
 
 <div id="panel">
   <h3>Properties</h3>
-  <label>Name: <input id="propName"></label>
-  <label>X: <input id="propLeft" type="number"></label>
-  <label>Y: <input id="propTop" type="number"></label>
-  <label>W: <input id="propWidth" type="number"></label>
-  <label>H: <input id="propHeight" type="number"></label>
-  <label>Color (R,G,B): <input id="propColor" placeholder="255,255,255"></label>
-  <label>Text: <input id="propText"></label>
-  <label>Image URL: <input id="propImage"></label>
+  <div id="propFields"></div>
   <button onclick="applyProperties()">Apply</button>
-  <h3>Lua Code</h3>
+  <h3>Generated Lua</h3>
   <textarea id="output"></textarea>
 </div>
 
 <script>
-let elementId=0, selected=null, currentParent=null, clipboard=null;
+let idCounter=0, selected=null, currentParent=null;
+const typeProps = {
+  Frame: ['Name','Left','Top','Width','Height','Color'],
+  TextLabel: ['Name','Left','Top','Width','Height','Color','Text'],
+  TextButton: ['Name','Left','Top','Width','Height','Color','Text'],
+  ImageLabel: ['Name','Left','Top','Width','Height','Color','Image'],
+  Folder: ['Name'],
+  Model: ['Name']
+};
 
-function addElement() {
-  const type=document.getElementById("instanceType").value;
-  elementId++;
-  const e=document.createElement("div");
-  e.className="ui-element";
-  e.dataset={}.id=elementId;
-  Object.assign(e.dataset,{id:elementId,type,name:`${type}${elementId}`,parent:currentParent?.dataset.id||"ScreenGui"});
-  ['left','top','width','height'].forEach(p=>e.style[p]= {'left':'50px','top':'50px','width':'100px','height':'50px'}[p]);
+function addElement(){
+  const t=document.getElementById('instanceType').value; idCounter++;
+  const e=document.createElement('div'); e.className='ui-element';
+  Object.assign(e.dataset,{id:idCounter,type:t,name:`${t}${idCounter}`,parent:currentParent?.dataset.id||'ScreenGui'});
+  e.style.left='50px'; e.style.top='50px'; e.style.width='100px'; e.style.height='50px';
   ['color','text','image'].forEach(p=>delete e.dataset[p]);
-  const drag=document.createElement("div"), resize=document.createElement("div");
-  drag.className="drag-handle"; drag.innerText="≡"; e.appendChild(drag);
-  resize.className="resize-handle"; resize.innerText="↘"; e.appendChild(resize);
+  const drag=document.createElement('div'), resize=document.createElement('div');
+  drag.className='drag-handle'; drag.innerText='≡'; resize.className='resize-handle'; resize.innerText='↘';
+  e.append(drag,resize);
   drag.onmousedown=e=>startDrag(e.target.parentElement);
   resize.onmousedown=e=>startResize(e.target.parentElement);
-  e.onclick=ev=>{ev.stopPropagation(); selectElement(e, true)};
-  (currentParent||document.getElementById("preview")).appendChild(e);
+  e.onclick=ev=>{ ev.stopPropagation(); select(e,true); };
+  (currentParent||document.getElementById('preview')).appendChild(e);
   refresh();
 }
 
-function selectElement(el, focusExplorer){
-  selected=el; currentParent=el; updatePanel(); highlight(); if(focusExplorer) refreshExplorer();
+function select(e,focusExplorer){
+  selected=e; currentParent=e; renderProps();
+  highlight(); if(focusExplorer) renderExplorer();
+  generateCode();
 }
 
 function startDrag(el){
-  const ref=el.parentElement.getBoundingClientRect();
-  const offsetX=parseInt(el.style.left), offsetY=parseInt(el.style.top);
-  function mv(e){ el.style.left=(e.clientX-ref.left-offsetX)+'px'; el.style.top=(e.clientY-ref.top-offsetY)+'px'; updatePanel(); generateCode();}
-  document.addEventListener('mousemove',mv);document.addEventListener('mouseup',()=>document.removeEventListener('mousemove',mv),{once:true});
+  const pr=el.parentElement.getBoundingClientRect(), ox=parseInt(el.style.left), oy=parseInt(el.style.top);
+  const move=ev=>{ el.style.left=(ev.clientX-pr.left-ox)+'px'; el.style.top=(ev.clientY-pr.top-oy)+'px'; renderProps(); generateCode();};
+  document.addEventListener('mousemove',move);
+  document.addEventListener('mouseup',()=>document.removeEventListener('mousemove',move),{once:true});
 }
 
 function startResize(el){
-  const startX=event.clientX,startY=event.clientY,startW=parseInt(el.style.width),startH=parseInt(el.style.height);
-  function mv(e){el.style.width=startW+(e.clientX-startX)+'px'; el.style.height=startH+(e.clientY-startY)+'px';updatePanel();generateCode();}
-  document.addEventListener('mousemove',mv);document.addEventListener('mouseup',()=>document.removeEventListener('mousemove',mv),{once:true});
+  const sx=event.clientX, sy=event.clientY, sw=parseInt(el.style.width), sh=parseInt(el.style.height);
+  const move=ev=>{ el.style.width=(sw+ev.clientX-sx)+'px'; el.style.height=(sh+ev.clientY-sy)+'px'; renderProps(); generateCode();};
+  document.addEventListener('mousemove',move);
+  document.addEventListener('mouseup',()=>document.removeEventListener('mousemove',move),{once:true});
 }
 
-function updatePanel(){
-  if(!selected)return;
-  ['Name','Left','Top','Width','Height','Color','Text','Image'].forEach(prop=>{
-    document.getElementById('prop'+prop).value=selected.dataset[prop.toLowerCase()]||{'Color':'255,255,255'}[prop]||selected.style[prop.toLowerCase()]?.replace('px','')||'';
+function renderProps(){
+  const cont=document.getElementById('propFields'); cont.innerHTML='';
+  if(!selected) return;
+  const props=typeProps[selected.dataset.type];
+  props.forEach(p=>{
+    const fld=document.createElement('div');
+    fld.innerHTML=`<label>${p}: <input id="prop${p}" /></label>`;
+    cont.appendChild(fld);
+    const val = ['Left','Top','Width','Height'].includes(p)
+      ? selected.style[p.toLowerCase()].replace('px','')
+      : selected.dataset[p.toLowerCase()] || '';
+    document.getElementById('prop'+p).value = val;
   });
 }
 
 function applyProperties(){
-  if(!selected)return;
-  ['Name','Left','Top','Width','Height','Color','Text','Image'].forEach(prop=>{
-    const val=document.getElementById('prop'+prop).value;
-    if(['Left','Top','Width','Height'].includes(prop))selected.style[prop.toLowerCase()]=val+'px';
-    else selected.dataset[prop.toLowerCase()]=val;
+  if(!selected) return;
+  typeProps[selected.dataset.type].forEach(p=>{
+    const val=document.getElementById('prop'+p).value;
+    if(['Left','Top','Width','Height'].includes(p)) selected.style[p.toLowerCase()]=val+'px';
+    else selected.dataset[p.toLowerCase()]=val;
   });
   refresh();
 }
 
-function highlight(){document.querySelectorAll('.ui-element').forEach(e=>e.classList.toggle('selected',e===selected));}
+function highlight(){
+  document.querySelectorAll('.ui-element').forEach(e=>e.classList.toggle('selected',e===selected));
+}
 
-function refresh(){
-  generateCode(); refreshExplorer(); highlight();
+function renderExplorer(){
+  const root=document.getElementById('explorerList'); root.innerHTML='';
+  function build(pid, lvl){
+    document.querySelectorAll('.ui-element').forEach(e=>{
+      if(e.dataset.parent===pid){
+        const row=document.createElement('div'); row.className='explorer-item';
+        row.style.paddingLeft=(lvl*12)+'px';
+        if(['Folder','Model'].includes(e.dataset.type)){
+          const tok=document.createElement('span');
+          tok.className='toggle'; tok.innerText = e.dataset._expanded?'▼':'▶';
+          tok.onclick = ev => { ev.stopPropagation(); e.dataset._expanded = !e.dataset._expanded; renderExplorer(); };
+          row.appendChild(tok);
+        } else row.appendChild(document.createElement('span')).className='toggle';
+        const ico=document.createElement('span'); ico.className='icon';
+        ico.innerText = {'Frame':'☐','TextLabel':'T','TextButton':'↿','ImageLabel':'🖼','Folder':'📁','Model':'📦'}[e.dataset.type];
+        row.appendChild(ico);
+        const name=document.createElement('span'); name.textContent=e.dataset.name;
+        row.appendChild(name);
+        row.onclick = () => select(e,false);
+        if(e.dataset._expanded) build(e.dataset.id, lvl+1);
+        root.appendChild(row);
+      }
+    });
+  }
+  build('ScreenGui',0);
 }
 
 function generateCode(){
-  const items=[...document.querySelectorAll('.ui-element')];
-  let map={} ;
-  items.forEach(e=>{
-    const nm=e.dataset.name, t=e.dataset.type, l=parseInt(e.style.left), tP=parseInt(e.style.top),
-          w=parseInt(e.style.width), h=parseInt(e.style.height),
-          [r,g,b]=(e.dataset.color||'255,255,255').split(',').map(Number),
-          txt=e.dataset.text||'', img=e.dataset.image||'', par=e.dataset.parent;
-    let s=`local ${nm}=Instance.new("${t}")\n${nm}.Size=UDim2.new(0,${w},0,${h})\n${nm}.Position=UDim2.new(0,${l},0,${tP})\n${nm}.BackgroundColor3=Color3.fromRGB(${r},${g},${b})\n`;
-    if(txt && /Text(Label|Button)/.test(t)) s+=`${nm}.Text="${txt}"\n`;
-    if(img && t==='ImageLabel') s+=`${nm}.Image="${img}"\n`;
-    s+=`${nm}.Parent=${par}\n\n`;
-    map[nm]=s;
+  let code=`local ScreenGui = Instance.new("ScreenGui")\n`;
+  [...document.querySelectorAll('.ui-element')].forEach(e=>{
+    const nm=e.dataset.name, t=e.dataset.type;
+    const l=parseInt(e.style.left), tp=parseInt(e.style.top), w=parseInt(e.style.width), h=parseInt(e.style.height);
+    const rgb=(e.dataset.color||'255,255,255').split(',').map(n=>parseInt(n));
+    const txt=e.dataset.text||'', img=e.dataset.image?`"rbxassetid://${e.dataset.image}"`:'';
+    code += `local ${nm} = Instance.new("${t}")\n`;
+    if(!['Folder','Model'].includes(t)){
+      code += `${nm}.Size = UDim2.new(0, ${w}, 0, ${h})\n${nm}.Position = UDim2.new(0, ${l}, 0, ${tp})\n`;
+      code += `${nm}.BackgroundColor3 = Color3.fromRGB(${rgb.join(',')})\n`;
+    }
+    if(txt && /Text(Label|Button)/.test(t)) code += `${nm}.Text = "${txt}"\n`;
+    if(img) code += `${nm}.Image = ${img}\n`;
+    code += `${nm}.Parent = ${e.dataset.parent}\n\n`;
   });
-  document.getElementById('output').value='local ScreenGui=Instance.new("ScreenGui")\n'+Object.values(map).join('');
+  document.getElementById('output').value = code;
 }
 
-function refreshExplorer(){
-  const root=document.getElementById('explorerList');
-  root.innerHTML='';
-  const build=(parentId, container)=>{
-    document.querySelectorAll('.ui-element').forEach(e=>{
-      if(e.dataset.parent===parentId){
-        const div=document.createElement('div');
-        div.className='explorer-item'; if(e===selected)div.classList.add('selected');
-        div.innerHTML=`<span class="icon">📦</span><span>${e.dataset.name}</span>`;
-        div.oncontextmenu=evt=>{
-          evt.preventDefault(); showContext(evt.pageX,evt.pageY,e);
-        };
-        div.onclick=()=>selectElement(e,false);
-        container.appendChild(div);
-        build(e.dataset.id,container);
-      }
-    });
-  };
-  build('ScreenGui',root);
-}
+document.getElementById('preview').onclick = () => { selected=null; currentParent=null; renderProps(); highlight(); };
 
-function showContext(x,y,el){
-  const cm=document.createElement('div');
-  cm.className='context-menu';
-  ['Cut','Copy','Paste','Rename','Delete'].forEach(cmd=>{
-    const it=document.createElement('div');
-    it.innerText=cmd;
-    it.onclick=()=>{
-      document.body.removeChild(cm);
-      switch(cmd){
-        case 'Cut':clipboard={el,mode:'cut'};break;
-        case 'Copy':clipboard={el,mode:'copy'};break;
-        case 'Paste': if(clipboard){ const clone=clipboard.mode==='copy'?clipboard.el.cloneNode(true):clipboard.el; if(clipboard.mode==='cut'){clipboard.el.dataset.parent=el.dataset.id;} else{clone.dataset.id=++elementId;el.parentElement.appendChild(clone);} refresh(); }break;
-        case 'Rename':{const n=prompt('Name?',el.dataset.name);if(n){el.dataset.name=n;refresh();}}break;
-        case 'Delete':el.parentElement.removeChild(el);if(selected===el)selected=null;refresh();break;
-      }
-    };
-    cm.appendChild(it);
-  });
-  cm.style.left=x+'px';cm.style.top=y+'px';
-  document.body.appendChild(cm);
-  document.addEventListener('click',()=>{if(document.body.contains(cm))document.body.removeChild(cm);}, {once:true});
-}
+refresh();
+function refresh(){ renderExplorer(); highlight(); generateCode(); }
 
-document.getElementById('preview').onclick=()=>{selected=null;currentParent=null;refresh();}
 </script>
+
+</body>
+</html>
