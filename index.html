@@ -1,15 +1,47 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Roblox UI Maker</title>
+  <title>Roblox UI Builder</title>
   <style>
-    body { font-family: sans-serif; display: flex; gap: 20px; padding: 20px; }
-    .preview { border: 1px solid #aaa; width: 500px; height: 400px; position: relative; }
+    body {
+      font-family: sans-serif;
+      display: flex;
+      gap: 20px;
+      padding: 20px;
+    }
+    .preview {
+      border: 1px solid #aaa;
+      width: 500px;
+      height: 400px;
+      position: relative;
+      background: #f4f4f4;
+    }
     .ui-element {
       position: absolute;
-      border: 1px dashed #333;
-      background-color: rgba(0,0,0,0.1);
+      border: 1px solid #444;
+      background-color: rgba(0, 0, 0, 0.1);
+    }
+    .drag-handle, .resize-handle {
+      width: 16px;
+      height: 16px;
+      position: absolute;
+      background-color: #444;
+      color: white;
+      font-size: 10px;
+      text-align: center;
+      line-height: 16px;
       cursor: pointer;
+    }
+    .drag-handle {
+      top: 0;
+      left: 0;
+      background: #555;
+    }
+    .resize-handle {
+      bottom: 0;
+      right: 0;
+      background: #888;
+      cursor: nwse-resize;
     }
     #panel {
       width: 300px;
@@ -17,14 +49,38 @@
       flex-direction: column;
       gap: 10px;
     }
-    label { font-weight: bold; }
-    textarea { width: 100%; height: 200px; }
+    label {
+      font-weight: bold;
+    }
+    textarea {
+      width: 100%;
+      height: 200px;
+    }
+    #explorer {
+      font-size: 14px;
+      width: 180px;
+      border: 1px solid #ccc;
+      height: 400px;
+      overflow-y: auto;
+      background: #fff;
+      padding: 5px;
+    }
+    .explorer-item {
+      padding: 3px;
+      cursor: pointer;
+    }
+    .explorer-item:hover {
+      background: #eee;
+    }
+    .selected {
+      outline: 2px solid red;
+    }
   </style>
 </head>
 <body>
 
 <div>
-  <h2>Roblox UI Maker</h2>
+  <h2>Roblox UI Builder</h2>
   <label>Instance Type:
     <select id="instanceType">
       <option value="Frame">Frame</option>
@@ -37,18 +93,23 @@
   <div class="preview" id="preview"></div>
 </div>
 
+<div id="explorer">
+  <b>Explorer</b><br>
+  <div id="explorerList"></div>
+</div>
+
 <div id="panel">
-  <h3>Selected Element</h3>
+  <h3>Properties</h3>
   <label>Name: <input id="propName"></label>
-  <label>Position X: <input id="propLeft" type="number"></label>
-  <label>Position Y: <input id="propTop" type="number"></label>
+  <label>X: <input id="propLeft" type="number"></label>
+  <label>Y: <input id="propTop" type="number"></label>
   <label>Width: <input id="propWidth" type="number"></label>
   <label>Height: <input id="propHeight" type="number"></label>
   <label>BG Color (RGB): <input id="propColor" placeholder="255,255,255"></label>
   <label>Text: <input id="propText"></label>
   <label>Image URL: <input id="propImage"></label>
   <button onclick="applyProperties()">Apply</button>
-  <h3>Generated Lua Code</h3>
+  <h3>Generated Lua</h3>
   <textarea id="output"></textarea>
 </div>
 
@@ -61,41 +122,80 @@ function addElement() {
   const type = document.getElementById("instanceType").value;
   elementId++;
 
-  const el = document.createElement("div");
-  el.className = "ui-element";
-  el.dataset.id = elementId;
-  el.dataset.type = type;
-  el.dataset.name = `${type}${elementId}`;
-  el.style.width = "100px";
-  el.style.height = "50px";
-  el.style.left = "50px";
-  el.style.top = "50px";
+  const wrapper = document.createElement("div");
+  wrapper.className = "ui-element";
+  wrapper.dataset.id = elementId;
+  wrapper.dataset.type = type;
+  wrapper.dataset.name = `${type}${elementId}`;
+  wrapper.style.left = "50px";
+  wrapper.style.top = "50px";
+  wrapper.style.width = "100px";
+  wrapper.style.height = "50px";
+  wrapper.dataset.parent = currentParent?.dataset.id || "ScreenGui";
 
-  el.onclick = (e) => {
+  const drag = document.createElement("div");
+  drag.className = "drag-handle";
+  drag.innerText = "≡";
+  wrapper.appendChild(drag);
+
+  const resize = document.createElement("div");
+  resize.className = "resize-handle";
+  resize.innerText = "↘";
+  wrapper.appendChild(resize);
+
+  drag.onmousedown = (e) => startDrag(e, wrapper);
+  resize.onmousedown = (e) => startResize(e, wrapper);
+
+  wrapper.onclick = (e) => {
     e.stopPropagation();
-    selected = el;
-    currentParent = el; // set as parent for future elements
+    selected = wrapper;
+    currentParent = wrapper;
     updatePropertyPanel();
+    highlightSelected();
     generateCode();
   };
 
-  const parent = currentParent || document.getElementById("preview");
-  parent.appendChild(el);
-  el.dataset.parent = currentParent?.dataset.id || "ScreenGui";
+  (currentParent || document.getElementById("preview")).appendChild(wrapper);
+  generateExplorer();
   generateCode();
 }
 
-function applyProperties() {
-  if (!selected) return;
-  selected.dataset.name = document.getElementById("propName").value;
-  selected.style.left = document.getElementById("propLeft").value + "px";
-  selected.style.top = document.getElementById("propTop").value + "px";
-  selected.style.width = document.getElementById("propWidth").value + "px";
-  selected.style.height = document.getElementById("propHeight").value + "px";
-  selected.dataset.color = document.getElementById("propColor").value;
-  selected.dataset.text = document.getElementById("propText").value;
-  selected.dataset.image = document.getElementById("propImage").value;
-  generateCode();
+function startDrag(e, el) {
+  e.preventDefault();
+  let offsetX = e.clientX - el.getBoundingClientRect().left;
+  let offsetY = e.clientY - el.getBoundingClientRect().top;
+  function move(ev) {
+    el.style.left = (ev.clientX - offsetX - el.parentElement.getBoundingClientRect().left) + "px";
+    el.style.top = (ev.clientY - offsetY - el.parentElement.getBoundingClientRect().top) + "px";
+    updatePropertyPanel();
+    generateCode();
+  }
+  function stop() {
+    document.removeEventListener("mousemove", move);
+    document.removeEventListener("mouseup", stop);
+  }
+  document.addEventListener("mousemove", move);
+  document.addEventListener("mouseup", stop);
+}
+
+function startResize(e, el) {
+  e.preventDefault();
+  const startX = e.clientX;
+  const startY = e.clientY;
+  const startWidth = parseInt(el.style.width);
+  const startHeight = parseInt(el.style.height);
+  function resize(ev) {
+    el.style.width = startWidth + (ev.clientX - startX) + "px";
+    el.style.height = startHeight + (ev.clientY - startY) + "px";
+    updatePropertyPanel();
+    generateCode();
+  }
+  function stop() {
+    document.removeEventListener("mousemove", resize);
+    document.removeEventListener("mouseup", stop);
+  }
+  document.addEventListener("mousemove", resize);
+  document.addEventListener("mouseup", stop);
 }
 
 function updatePropertyPanel() {
@@ -110,13 +210,29 @@ function updatePropertyPanel() {
   document.getElementById("propImage").value = selected.dataset.image || "";
 }
 
-function generateCode() {
-  const preview = document.getElementById("preview");
-  const all = preview.querySelectorAll(".ui-element");
-  const elements = Array.from(all);
+function applyProperties() {
+  if (!selected) return;
+  selected.dataset.name = document.getElementById("propName").value;
+  selected.style.left = document.getElementById("propLeft").value + "px";
+  selected.style.top = document.getElementById("propTop").value + "px";
+  selected.style.width = document.getElementById("propWidth").value + "px";
+  selected.style.height = document.getElementById("propHeight").value + "px";
+  selected.dataset.color = document.getElementById("propColor").value;
+  selected.dataset.text = document.getElementById("propText").value;
+  selected.dataset.image = document.getElementById("propImage").value;
+  generateCode();
+  generateExplorer();
+}
 
-  const codeMap = {};
-  elements.forEach(el => {
+function highlightSelected() {
+  document.querySelectorAll(".ui-element").forEach(e => e.classList.remove("selected"));
+  if (selected) selected.classList.add("selected");
+}
+
+function generateCode() {
+  const all = document.querySelectorAll(".ui-element");
+  let codeMap = {};
+  all.forEach(el => {
     const name = el.dataset.name;
     const type = el.dataset.type;
     const left = parseInt(el.style.left);
@@ -139,21 +255,28 @@ function generateCode() {
     codeMap[name] = props;
   });
 
-  let code = "local ScreenGui = Instance.new(\"ScreenGui\")\n";
-  elements.forEach(el => {
-    const name = el.dataset.name;
-    code += codeMap[name];
-  });
-
+  let code = `local ScreenGui = Instance.new("ScreenGui")\n`;
+  for (let name in codeMap) code += codeMap[name];
   document.getElementById("output").value = code;
 }
 
-// Allow clicking blank area to deselect
-document.getElementById("preview").onclick = () => {
-  selected = null;
-  currentParent = null;
-  document.getElementById("propName").value = "";
-};
+function generateExplorer() {
+  const explorer = document.getElementById("explorerList");
+  explorer.innerHTML = "";
+  document.querySelectorAll(".ui-element").forEach(el => {
+    const item = document.createElement("div");
+    item.className = "explorer-item";
+    item.textContent = el.dataset.name;
+    item.onclick = () => {
+      selected = el;
+      currentParent = el;
+      updatePropertyPanel();
+      highlightSelected();
+      generateCode();
+    };
+    explorer.appendChild(item);
+  });
+}
 </script>
 
 </body>
