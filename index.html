@@ -2,20 +2,22 @@
 <html>
 <head>
   <title>Roblox UI Builder</title>
+  <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
   <style>
     body { font-family: sans-serif; display: flex; gap: 20px; padding: 20px; }
     .preview { border:1px solid #aaa; width:500px; height:400px; position:relative; background:#f4f4f4; }
     .ui-element { position:absolute; border:1px solid #444; background:rgba(0,0,0,0.1); }
-    .drag-handle, .resize-handle { width:16px; height:16px; position:absolute; font-size:10px; text-align:center; line-height:16px; }
-    .drag-handle { top:0; left:0; background:#555; cursor:move; }
-    .resize-handle { bottom:0; right:0; background:#888; cursor:nwse-resize; }
+    .selected-border { outline:2px solid blue; }
     #explorer { width:220px; border:1px solid #ccc; height:400px; overflow:auto; background:#fff; padding:5px;}
     .explorer-item { padding:2px 4px; cursor:pointer; display:flex; align-items:center; user-select:none; }
     .explorer-item.selected { background:#def; }
-    .icon { width:16px; text-align:center; user-select:none; }
-    .toggle { width:16px; cursor:pointer; }
+    .toggle, .icon { width:16px; text-align:center; }
     #panel { width:300px; display:flex; flex-direction:column; gap:8px; }
     textarea { width:100%; height:200px; }
+    .context-menu { position:absolute; background:#fff; border:1px solid #ccc; z-index:1000; }
+    .context-menu div { padding:4px 8px; cursor:pointer; }
+    .context-menu div:hover { background:#eee; }
+    #modeButtons { margin:8px 0; }
   </style>
 </head>
 <body>
@@ -29,150 +31,211 @@
     </select>
   </label>
   <button onclick="addElement()">Add Element</button>
-  <div class="preview" id="preview"></div>
+  <div id="modeButtons">
+    <button onclick="setMode('move')">🔀 Move</button>
+    <button onclick="setMode('resize')">📐 Resize</button>
+  </div>
+  <div class="preview" id="preview" onclick="clearSelection()"></div>
 </div>
 
 <div id="explorer">
   <b>Explorer</b><br>
-  <div id="explorerList"></div>
+  <div id="explorerList" onclick="clearSelection()"></div>
 </div>
 
 <div id="panel">
   <h3>Properties</h3>
   <div id="propFields"></div>
   <button onclick="applyProperties()">Apply</button>
-  <h3>Generated Lua</h3>
+  <h3>Lua Code</h3>
   <textarea id="output"></textarea>
 </div>
 
 <script>
-let idCounter=0, selected=null, currentParent=null;
-const typeProps = {
-  Frame: ['Name','Left','Top','Width','Height','Color'],
-  TextLabel: ['Name','Left','Top','Width','Height','Color','Text'],
-  TextButton: ['Name','Left','Top','Width','Height','Color','Text'],
-  ImageLabel: ['Name','Left','Top','Width','Height','Color','Image'],
-  Folder: ['Name'],
-  Model: ['Name']
-};
+let idCounter = 0, selected = null, currentParent = null, clipboard = null, mode = 'move';
+const typeProps = { Frame:['Name','Left','Top','Width','Height','Color'], TextLabel:['Name','Left','Top','Width','Height','Color','Text'], TextButton:['Name','Left','Top','Width','Height','Color','Text'], ImageLabel:['Name','Left','Top','Width','Height','Color','Image'], Folder:['Name'], Model:['Name'] };
 
 function addElement(){
-  const t=document.getElementById('instanceType').value; idCounter++;
-  const e=document.createElement('div'); e.className='ui-element';
+  const t = document.getElementById('instanceType').value; idCounter++;
+  const e = document.createElement('div'); e.className='ui-element';
   Object.assign(e.dataset,{id:idCounter,type:t,name:`${t}${idCounter}`,parent:currentParent?.dataset.id||'ScreenGui'});
-  e.style.left='50px'; e.style.top='50px'; e.style.width='100px'; e.style.height='50px';
+  e.style.cssText = 'left:50px; top:50px; width:100px; height:50px;';
   ['color','text','image'].forEach(p=>delete e.dataset[p]);
-  const drag=document.createElement('div'), resize=document.createElement('div');
-  drag.className='drag-handle'; drag.innerText='≡'; resize.className='resize-handle'; resize.innerText='↘';
-  e.append(drag,resize);
-  drag.onmousedown=e=>startDrag(e.target.parentElement);
-  resize.onmousedown=e=>startResize(e.target.parentElement);
-  e.onclick=ev=>{ ev.stopPropagation(); select(e,true); };
-  (currentParent||document.getElementById('preview')).appendChild(e);
+  e.addEventListener('click', ev=>{ ev.stopPropagation(); select(e,true); });
+  document.getElementById('preview').appendChild(e);
+  interactElement(e);
   refresh();
 }
 
-function select(e,focusExplorer){
-  selected=e; currentParent=e; renderProps();
-  highlight(); if(focusExplorer) renderExplorer();
+function clearSelection(){
+  selected = null;
+  document.getElementById('propFields').innerHTML = '';
+  updateHighlight();
+}
+
+function select(e, focusExplorer){
+  selected = e;
+  currentParent = e;
+  renderProps();
+  updateHighlight();
+  if(focusExplorer) renderExplorer();
   generateCode();
 }
 
-function startDrag(el){
-  const pr=el.parentElement.getBoundingClientRect(), ox=parseInt(el.style.left), oy=parseInt(el.style.top);
-  const move=ev=>{ el.style.left=(ev.clientX-pr.left-ox)+'px'; el.style.top=(ev.clientY-pr.top-oy)+'px'; renderProps(); generateCode();};
-  document.addEventListener('mousemove',move);
-  document.addEventListener('mouseup',()=>document.removeEventListener('mousemove',move),{once:true});
-}
-
-function startResize(el){
-  const sx=event.clientX, sy=event.clientY, sw=parseInt(el.style.width), sh=parseInt(el.style.height);
-  const move=ev=>{ el.style.width=(sw+ev.clientX-sx)+'px'; el.style.height=(sh+ev.clientY-sy)+'px'; renderProps(); generateCode();};
-  document.addEventListener('mousemove',move);
-  document.addEventListener('mouseup',()=>document.removeEventListener('mousemove',move),{once:true});
+function updateHighlight(){
+  document.querySelectorAll('.ui-element').forEach(el => {
+    el.classList.toggle('selected-border', el === selected);
+  });
 }
 
 function renderProps(){
-  const cont=document.getElementById('propFields'); cont.innerHTML='';
-  if(!selected) return;
-  const props=typeProps[selected.dataset.type];
-  props.forEach(p=>{
-    const fld=document.createElement('div');
-    fld.innerHTML=`<label>${p}: <input id="prop${p}" /></label>`;
-    cont.appendChild(fld);
-    const val = ['Left','Top','Width','Height'].includes(p)
-      ? selected.style[p.toLowerCase()].replace('px','')
-      : selected.dataset[p.toLowerCase()] || '';
+  const cont = document.getElementById('propFields'); cont.innerHTML = '';
+  if (!selected) return;
+  typeProps[selected.dataset.type].forEach(p => {
+    const div = document.createElement('div');
+    div.innerHTML = `<label>${p}: <input id="prop${p}"/></label>`;
+    cont.appendChild(div);
+    let val;
+    if(['Left','Top','Width','Height'].includes(p)) val = parseInt(selected.style[p.toLowerCase()]);
+    else val = selected.dataset[p.toLowerCase()] || '';
     document.getElementById('prop'+p).value = val;
   });
 }
 
 function applyProperties(){
   if(!selected) return;
-  typeProps[selected.dataset.type].forEach(p=>{
-    const val=document.getElementById('prop'+p).value;
-    if(['Left','Top','Width','Height'].includes(p)) selected.style[p.toLowerCase()]=val+'px';
-    else selected.dataset[p.toLowerCase()]=val;
+  typeProps[selected.dataset.type].forEach(p => {
+    const v = document.getElementById('prop'+p).value;
+    if(['Left','Top','Width','Height'].includes(p)) selected.style[p.toLowerCase()] = v+'px';
+    else selected.dataset[p.toLowerCase()] = v;
   });
   refresh();
 }
 
-function highlight(){
-  document.querySelectorAll('.ui-element').forEach(e=>e.classList.toggle('selected',e===selected));
-}
-
 function renderExplorer(){
-  const root=document.getElementById('explorerList'); root.innerHTML='';
+  const root = document.getElementById('explorerList'); root.innerHTML = '';
   function build(pid, lvl){
-    document.querySelectorAll('.ui-element').forEach(e=>{
-      if(e.dataset.parent===pid){
-        const row=document.createElement('div'); row.className='explorer-item';
-        row.style.paddingLeft=(lvl*12)+'px';
+    document.querySelectorAll('.ui-element').forEach(e => {
+      if (e.dataset.parent === pid) {
+        const row = document.createElement('div');
+        row.className = 'explorer-item'+(e===selected?' selected':'');
+        row.style.paddingLeft = (lvl * 12) + 'px';
+        // toggle
+        const toggle = document.createElement('span');
+        toggle.className = 'toggle';
         if(['Folder','Model'].includes(e.dataset.type)){
-          const tok=document.createElement('span');
-          tok.className='toggle'; tok.innerText = e.dataset._expanded?'▼':'▶';
-          tok.onclick = ev => { ev.stopPropagation(); e.dataset._expanded = !e.dataset._expanded; renderExplorer(); };
-          row.appendChild(tok);
-        } else row.appendChild(document.createElement('span')).className='toggle';
-        const ico=document.createElement('span'); ico.className='icon';
-        ico.innerText = {'Frame':'☐','TextLabel':'T','TextButton':'↿','ImageLabel':'🖼','Folder':'📁','Model':'📦'}[e.dataset.type];
+          toggle.innerText = e.dataset._expanded ? '▼' : '▶';
+          toggle.onclick = ev => { ev.stopPropagation(); e.dataset._expanded = !e.dataset._expanded; renderExplorer(); };
+        }
+        row.appendChild(toggle);
+        // icon
+        const ico = document.createElement('span');
+        ico.className = 'icon';
+        ico.innerText = {Frame:'☐',TextLabel:'T',TextButton:'↿',ImageLabel:'🖼',Folder:'📁',Model:'📦'}[e.dataset.type];
         row.appendChild(ico);
-        const name=document.createElement('span'); name.textContent=e.dataset.name;
-        row.appendChild(name);
-        row.onclick = () => select(e,false);
-        if(e.dataset._expanded) build(e.dataset.id, lvl+1);
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = e.dataset.name;
+        row.appendChild(nameSpan);
+        row.onclick = () => select(e, false);
+        row.oncontextmenu = ev => { ev.preventDefault(); contextMenu(ev.clientX, ev.clientY, e); };
         root.appendChild(row);
+        if(e.dataset._expanded) build(e.dataset.id, lvl + 1);
       }
     });
   }
-  build('ScreenGui',0);
+  build('ScreenGui', 0);
+}
+
+function contextMenu(x, y, el){
+  const menu = document.createElement('div');
+  menu.className = 'context-menu';
+  ['Cut','Copy','Paste','Rename','Delete'].forEach(cmd => {
+    const item = document.createElement('div');
+    item.innerText = cmd;
+    item.onclick = () => {
+      document.body.removeChild(menu);
+      handleContext(cmd, el);
+    };
+    menu.appendChild(item);
+  });
+  menu.style.left = x+'px'; menu.style.top = y+'px';
+  document.body.appendChild(menu);
+  document.addEventListener('click', () => { if(menu.parentNode) document.body.removeChild(menu); }, { once:true });
+}
+
+function handleContext(cmd, el){
+  if(cmd==='Cut' || cmd==='Copy') clipboard = { el, mode:cmd.toLowerCase() };
+  if(cmd==='Paste' && clipboard && selected){
+    if(clipboard.mode==='cut') clipboard.el.dataset.parent = selected.dataset.id;
+    else {
+      const clone = clipboard.el.cloneNode(true);
+      idCounter++; clone.dataset.id = idCounter;
+      selected.parentElement.appendChild(clone);
+      interactElement(clone);
+    }
+  }
+  if(cmd==='Rename'){
+    const n = prompt('New Name:', el.dataset.name);
+    if(n) el.dataset.name = n;
+  }
+  if(cmd==='Delete'){
+    el.parentElement.removeChild(el);
+    if(el===selected) selected=null;
+  }
+  refresh();
+}
+
+function setMode(m){
+  mode = m;
+  updateMode();
+}
+
+function updateMode(){
+  document.querySelectorAll('.ui-element').forEach(el => {
+    if(mode === 'move') {
+      interact(el).draggable(true).resizable(false);
+    } else {
+      interact(el).draggable(false).resizable({
+        edges: { bottom: true, right: true },
+        restrictEdges: { outer: 'parent' }
+      });
+    }
+  });
+}
+
+function interactElement(el){
+  interact(el).draggable({
+    inertia: false,
+    modifiers: [interact.modifiers.restrictRect({ restriction: 'parent' })],
+    listeners: { move(event){ const x=parseFloat(el.style.left); const y=parseFloat(el.style.top); el.style.left=(x+event.dx)+'px'; el.style.top=(y+event.dy)+'px'; if(el===selected) renderProps(); generateCode(); } }
+  }).resizable({
+    edges: { bottom: true, right: true },
+    inertia: false,
+    listeners: { move(event){ el.style.width = event.rect.width+'px'; el.style.height = event.rect.height+'px'; if(el===selected) renderProps(); generateCode(); } }
+  });
 }
 
 function generateCode(){
-  let code=`local ScreenGui = Instance.new("ScreenGui")\n`;
-  [...document.querySelectorAll('.ui-element')].forEach(e=>{
+  let code = 'local ScreenGui = Instance.new("ScreenGui")\n';
+  [...document.querySelectorAll('.ui-element')].forEach(e => {
     const nm=e.dataset.name, t=e.dataset.type;
-    const l=parseInt(e.style.left), tp=parseInt(e.style.top), w=parseInt(e.style.width), h=parseInt(e.style.height);
-    const rgb=(e.dataset.color||'255,255,255').split(',').map(n=>parseInt(n));
-    const txt=e.dataset.text||'', img=e.dataset.image?`"rbxassetid://${e.dataset.image}"`:'';
     code += `local ${nm} = Instance.new("${t}")\n`;
     if(!['Folder','Model'].includes(t)){
+      const l=parseInt(e.style.left), tp=parseInt(e.style.top), w=parseInt(e.style.width), h=parseInt(e.style.height);
+      const [r,g,b]=(e.dataset.color||'255,255,255').split(',').map(Number);
       code += `${nm}.Size = UDim2.new(0, ${w}, 0, ${h})\n${nm}.Position = UDim2.new(0, ${l}, 0, ${tp})\n`;
-      code += `${nm}.BackgroundColor3 = Color3.fromRGB(${rgb.join(',')})\n`;
+      code += `${nm}.BackgroundColor3 = Color3.fromRGB(${r},${g},${b})\n`;
     }
-    if(txt && /Text(Label|Button)/.test(t)) code += `${nm}.Text = "${txt}"\n`;
-    if(img) code += `${nm}.Image = ${img}\n`;
+    if(e.dataset.text && /Text(Label|Button)/.test(t)) code += `${nm}.Text = "${e.dataset.text}"\n`;
+    if(e.dataset.image) code += `${nm}.Image = "rbxassetid://${e.dataset.image}"\n`;
     code += `${nm}.Parent = ${e.dataset.parent}\n\n`;
   });
   document.getElementById('output').value = code;
 }
 
-document.getElementById('preview').onclick = () => { selected=null; currentParent=null; renderProps(); highlight(); };
-
+function refresh(){ renderExplorer(); updateHighlight(); generateCode(); updateMode(); }
+document.getElementById('preview').addEventListener('click', clearSelection);
 refresh();
-function refresh(){ renderExplorer(); highlight(); generateCode(); }
-
 </script>
-
 </body>
 </html>
