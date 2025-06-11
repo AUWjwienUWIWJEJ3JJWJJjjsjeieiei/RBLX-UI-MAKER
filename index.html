@@ -1,138 +1,35 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Roblox UI Builder (Mobile Friendly)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <link rel="stylesheet" href="./libs/gpickr.min.css">
+  <title>Roblox UI Builder (Mobile Improved)</title>
   <script src="./libs/interact.min.js"></script>
+  <link rel="stylesheet" href="./libs/gpickr.min.css" />
   <script src="./libs/gpickr.min.js"></script>
   <style>
-    body {
-      font-family: sans-serif;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      padding: 10px;
-      user-select: none;
-      -webkit-user-select: none;
-      -ms-user-select: none;
-    }
-    .preview {
-      border: 1px solid #aaa;
-      width: 100%;
-      max-width: 500px;
-      height: 400px;
-      position: relative;
-      background: #f4f4f4;
-      touch-action: none; /* important for touch dragging */
-    }
-    .ui-element {
-      position: absolute;
-      border: 1px solid #444;
-      background: rgba(0,0,0,0.1);
-      touch-action: none;
-      box-sizing: border-box;
-      font-size: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      overflow: hidden;
-      user-select: none;
-    }
-    .selected-border {
-      outline: 2px solid blue;
-    }
-    #explorer {
-      width: 100%;
-      max-width: 220px;
-      border: 1px solid #ccc;
-      height: 400px;
-      overflow-y: auto;
-      background: #fff;
-      padding: 5px;
-      -webkit-overflow-scrolling: touch;
-    }
-    .explorer-item {
-      padding: 4px 6px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      user-select: none;
-      font-size: 14px;
-    }
-    .explorer-item.selected {
-      background: #def;
-    }
-    .toggle, .icon {
-      width: 18px;
-      text-align: center;
-      user-select: none;
-    }
-    #panel {
-      width: 100%;
-      max-width: 300px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    textarea {
-      width: 100%;
-      height: 200px;
-      font-family: monospace;
-      font-size: 12px;
-    }
-    .context-menu {
-      position: absolute;
-      background: #fff;
-      border: 1px solid #ccc;
-      z-index: 10000;
-      font-size: 14px;
-      user-select: none;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-      border-radius: 3px;
-    }
-    .context-menu div {
-      padding: 6px 12px;
-      cursor: pointer;
-    }
-    .context-menu div:hover {
-      background: #eee;
-    }
-    #modeButtons {
-      margin: 8px 0;
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    button {
-      flex: 1;
-      padding: 8px;
-      font-size: 14px;
-      border-radius: 5px;
-      border: 1px solid #666;
-      background: #eee;
-      user-select: none;
-      -webkit-user-select: none;
-    }
-    button:active {
-      background: #ccc;
-    }
+    body { font-family: sans-serif; display: flex; gap: 20px; padding: 20px; margin:0; height: 100vh; overflow: hidden; }
+    .preview { border:1px solid #aaa; width:500px; height:400px; position:relative; background:#f4f4f4; touch-action: none; user-select:none; }
+    .ui-element { position:absolute; border:1px solid #444; background:rgba(0,0,0,0.1); touch-action: none; user-select:none; }
+    .selected-border { outline:2px solid blue; }
+    #explorer { width:220px; border:1px solid #ccc; height:400px; overflow:auto; background:#fff; padding:5px; user-select:none; }
+    .explorer-item { padding:2px 4px; cursor:pointer; display:flex; align-items:center; user-select:none; }
+    .explorer-item.selected { background:#def; }
+    .toggle, .icon { width:16px; text-align:center; user-select:none; }
+    #panel { width:300px; display:flex; flex-direction:column; gap:8px; }
+    textarea { width:100%; height:200px; }
+    .context-menu { position:absolute; background:#fff; border:1px solid #ccc; z-index:1000; }
+    .context-menu div { padding:4px 8px; cursor:pointer; }
+    .context-menu div:hover { background:#eee; }
+    #modeButtons { margin:8px 0; }
   </style>
 </head>
 <body>
 
-<div style="flex:1; min-width: 280px; max-width: 500px;">
+<div>
   <h2>UI Builder</h2>
-  <label style="font-size: 16px; user-select:none;">
-    Type:
-    <select id="instanceType" style="font-size: 16px; padding: 4px; margin-left: 8px;">
-      <option>Frame</option>
-      <option>TextLabel</option>
-      <option>TextButton</option>
-      <option>ImageLabel</option>
-      <option>Folder</option>
-      <option>Model</option>
+  <label>Type:
+    <select id="instanceType">
+      <option>Frame</option><option>TextLabel</option><option>TextButton</option>
+      <option>ImageLabel</option><option>Folder</option><option>Model</option>
     </select>
   </label>
   <button onclick="addElement()">Add Element</button>
@@ -158,6 +55,8 @@
 
 <script>
 let idCounter = 0, selected = null, currentParent = null, clipboard = null, mode = 'move';
+let isDraggingOrResizing = false;
+
 const typeProps = {
   Frame:['Name','Left','Top','Width','Height','Color'],
   TextLabel:['Name','Left','Top','Width','Height','Color','Text'],
@@ -167,34 +66,39 @@ const typeProps = {
   Model:['Name']
 };
 
+const typeIcons = {
+  Frame: '☐',
+  TextLabel: 'T',
+  TextButton: '↿',
+  ImageLabel: '🖼',
+  Folder: '📁',
+  Model: '📦'
+};
+
 function addElement(){
-  const t = document.getElementById('instanceType').value;
+  const t = document.getElementById('instanceType').value; 
   idCounter++;
-  const e = document.createElement('div');
-  e.className = 'ui-element';
-  Object.assign(e.dataset, {
-    id: idCounter,
-    type: t,
-    name: `${t}${idCounter}`,
+  const e = document.createElement('div'); 
+  e.className='ui-element';
+  Object.assign(e.dataset,{
+    id:idCounter,
+    type:t,
+    name:`${t}${idCounter}`,
     parent: currentParent?.dataset.id || 'ScreenGui'
   });
-
-  // Set default position & size or hide containers
-  if(['Folder','Model'].includes(t)) {
-    e.style.display = 'none'; // invisible container
-  } else {
-    e.style.cssText = 'left:50px; top:50px; width:100px; height:50px;';
-  }
-  ['color','text','image'].forEach(p => delete e.dataset[p]);
-
-  e.addEventListener('click', ev => { ev.stopPropagation(); select(e,true); });
-
+  e.style.cssText = 'left:50px; top:50px; width:100px; height:50px;';
+  ['color','text','image'].forEach(p=>delete e.dataset[p]);
+  e.addEventListener('click', ev=>{
+    ev.stopPropagation();
+    if (!isDraggingOrResizing) select(e,true);
+  });
   document.getElementById('preview').appendChild(e);
   interactElement(e);
   refresh();
 }
 
 function clearSelection(){
+  if(isDraggingOrResizing) return; // don't clear if dragging/resizing
   selected = null;
   currentParent = null;
   document.getElementById('propFields').innerHTML = '';
@@ -202,6 +106,7 @@ function clearSelection(){
 }
 
 function select(e, focusExplorer){
+  if(isDraggingOrResizing) return; // prevent selecting during drag/resize
   selected = e;
   currentParent = e;
   renderProps();
@@ -217,133 +122,76 @@ function updateHighlight(){
 }
 
 function renderProps(){
-  const cont = document.getElementById('propFields');
+  const cont = document.getElementById('propFields'); 
   cont.innerHTML = '';
-  if(!selected) return;
-
+  if (!selected) return;
   typeProps[selected.dataset.type].forEach(p => {
     const div = document.createElement('div');
-    if(p === 'Color'){
-      div.innerHTML = `
-        <label style="display:flex; align-items:center; gap:8px;">
-          ${p}: 
-          <input id="prop${p}" type="text" style="flex:1; font-size:14px; padding:4px;" />
-          <span id="colorPreview${p}" style="width:28px; height:28px; border:1px solid #000; cursor:pointer; border-radius:3px;"></span>
-        </label>
-      `;
-      cont.appendChild(div);
-      // Set input value and init gpickr
-      const input = document.getElementById(`prop${p}`);
-      input.value = selected.dataset.color || '255,255,255';
-
-      // Clear any existing picker first if any
-      if(window.colorPickr) window.colorPickr.destroy();
-
-      window.colorPickr = Pickr.create({
-        el: `#colorPreview${p}`,
-        theme: 'nano',
-        default: `rgb(${input.value})`,
-        components: {
-          preview: true,
-          opacity: false,
-          hue: true,
-          interaction: {
-            input: true,
-            save: true
-          }
-        }
-      });
-      window.colorPickr.on('save', (color) => {
-        const rgb = color.toRGBA().slice(0,3).map(c => Math.round(c)).join(',');
-        selected.dataset.color = rgb;
-        input.value = rgb;
-        window.colorPickr.hide();
-        generateCode();
-      });
-      // Also update preview box background color
-      document.getElementById(`colorPreview${p}`).style.backgroundColor = `rgb(${input.value})`;
-
-      input.oninput = () => {
-        const val = input.value;
-        if(/^(\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})$/.test(val)) {
-          selected.dataset.color = val;
-          document.getElementById(`colorPreview${p}`).style.backgroundColor = `rgb(${val})`;
-          generateCode();
-        }
-      };
-    } else {
-      div.innerHTML = `<label>${p}: <input id="prop${p}" style="font-size:14px; padding:4px; width: 100%;"/></label>`;
-      cont.appendChild(div);
-      let val;
-      if(['Left','Top','Width','Height'].includes(p)) {
-        val = parseInt(selected.style[p.toLowerCase()]);
-      } else {
-        val = selected.dataset[p.toLowerCase()] || '';
-      }
-      document.getElementById('prop'+p).value = val;
-    }
+    div.innerHTML = `<label>${p}: <input id="prop${p}" autocomplete="off" /></label>`;
+    cont.appendChild(div);
+    let val;
+    if(['Left','Top','Width','Height'].includes(p)) val = parseInt(selected.style[p.toLowerCase()]);
+    else val = selected.dataset[p.toLowerCase()] || '';
+    document.getElementById('prop'+p).value = val;
   });
 }
 
 function applyProperties(){
   if(!selected) return;
   typeProps[selected.dataset.type].forEach(p => {
-    const input = document.getElementById('prop'+p);
-    if(!input) return;
-    const v = input.value;
-    if(['Left','Top','Width','Height'].includes(p)) {
-      selected.style[p.toLowerCase()] = v+'px';
-    } else if (p === 'Color') {
-      selected.dataset.color = v;
-      document.getElementById(`colorPreview${p}`).style.backgroundColor = `rgb(${v})`;
-    } else {
-      selected.dataset[p.toLowerCase()] = v;
+    const v = document.getElementById('prop'+p).value;
+    if(['Left','Top','Width','Height'].includes(p)){
+      if(!isNaN(parseInt(v))) selected.style[p.toLowerCase()] = v+'px';
     }
+    else selected.dataset[p.toLowerCase()] = v;
   });
   refresh();
 }
 
 function renderExplorer(){
-  const root = document.getElementById('explorerList');
+  const root = document.getElementById('explorerList'); 
   root.innerHTML = '';
-
   function build(pid, lvl){
     document.querySelectorAll('.ui-element').forEach(e => {
-      if(e.dataset.parent === pid){
+      if (e.dataset.parent === pid) {
         const row = document.createElement('div');
-        row.className = 'explorer-item' + (e === selected ? ' selected' : '');
+        row.className = 'explorer-item'+(e===selected?' selected':'');
         row.style.paddingLeft = (lvl * 12) + 'px';
 
+        // toggle for Folder/Model
         const toggle = document.createElement('span');
         toggle.className = 'toggle';
         if(['Folder','Model'].includes(e.dataset.type)){
           toggle.innerText = e.dataset._expanded ? '▼' : '▶';
-          toggle.onclick = ev => {
+          toggle.onclick = ev => { 
             ev.stopPropagation();
-            e.dataset._expanded = !e.dataset._expanded;
-            renderExplorer();
+            e.dataset._expanded = !e.dataset._expanded; 
+            renderExplorer(); 
           };
         } else {
           toggle.innerText = '';
-          toggle.style.width = '16px';
         }
         row.appendChild(toggle);
 
+        // icon
         const ico = document.createElement('span');
         ico.className = 'icon';
-        ico.innerText = {Frame:'☐',TextLabel:'T',TextButton:'↿',ImageLabel:'🖼',Folder:'📁',Model:'📦'}[e.dataset.type];
+        ico.innerText = typeIcons[e.dataset.type] || '?';
         row.appendChild(ico);
 
+        // name
         const nameSpan = document.createElement('span');
         nameSpan.textContent = e.dataset.name;
         row.appendChild(nameSpan);
 
-        row.onclick = () => select(e, false);
-        row.oncontextmenu = ev => {
-          ev.preventDefault();
-          contextMenu(ev.clientX, ev.clientY, e);
+        // disable selection while dragging/resizing
+        row.onclick = () => {
+          if (!isDraggingOrResizing) select(e, false);
         };
-
+        row.oncontextmenu = ev => { 
+          ev.preventDefault(); 
+          contextMenu(ev.clientX, ev.clientY, e); 
+        };
         root.appendChild(row);
 
         if(e.dataset._expanded) build(e.dataset.id, lvl + 1);
@@ -360,43 +208,37 @@ function contextMenu(x, y, el){
     const item = document.createElement('div');
     item.innerText = cmd;
     item.onclick = () => {
-      if(menu.parentNode) document.body.removeChild(menu);
+      document.body.removeChild(menu);
       handleContext(cmd, el);
     };
     menu.appendChild(item);
   });
-  menu.style.left = x + 'px';
-  menu.style.top = y + 'px';
+  menu.style.left = x+'px'; 
+  menu.style.top = y+'px';
   document.body.appendChild(menu);
-
-  document.addEventListener('click', () => {
-    if(menu.parentNode) document.body.removeChild(menu);
+  document.addEventListener('click', () => { 
+    if(menu.parentNode) document.body.removeChild(menu); 
   }, { once:true });
 }
 
 function handleContext(cmd, el){
-  if(cmd === 'Cut' || cmd === 'Copy') {
-    clipboard = { el, mode: cmd.toLowerCase() };
-  }
-  if(cmd === 'Paste' && clipboard && selected) {
-    if(clipboard.mode === 'cut') {
-      clipboard.el.dataset.parent = selected.dataset.id;
-    } else {
+  if(cmd==='Cut' || cmd==='Copy') clipboard = { el, mode:cmd.toLowerCase() };
+  if(cmd==='Paste' && clipboard && selected){
+    if(clipboard.mode==='cut') clipboard.el.dataset.parent = selected.dataset.id;
+    else {
       const clone = clipboard.el.cloneNode(true);
-      idCounter++; 
-      clone.dataset.id = idCounter;
-      clone.dataset.parent = selected.dataset.id;
-      document.getElementById('preview').appendChild(clone);
+      idCounter++; clone.dataset.id = idCounter;
+      selected.parentElement.appendChild(clone);
       interactElement(clone);
     }
   }
-  if(cmd === 'Rename') {
+  if(cmd==='Rename'){
     const n = prompt('New Name:', el.dataset.name);
     if(n) el.dataset.name = n;
   }
-  if(cmd === 'Delete') {
-    if(el.parentElement) el.parentElement.removeChild(el);
-    if(el === selected) selected = null;
+  if(cmd==='Delete'){
+    el.parentElement.removeChild(el);
+    if(el===selected) selected=null;
   }
   refresh();
 }
@@ -408,7 +250,7 @@ function setMode(m){
 
 function updateMode(){
   document.querySelectorAll('.ui-element').forEach(el => {
-    if(mode === 'move'){
+    if(mode === 'move') {
       interact(el).draggable(true).resizable(false);
     } else {
       interact(el).draggable(false).resizable({
@@ -419,59 +261,96 @@ function updateMode(){
   });
 }
 
+// Clamp helper to keep inside preview box
+function clampPosition(x, y, width, height, container) {
+  const rect = container.getBoundingClientRect();
+  // convert to relative coords inside container
+  const maxX = rect.width - width;
+  const maxY = rect.height - height;
+  return {
+    x: Math.min(Math.max(x, 0), maxX),
+    y: Math.min(Math.max(y, 0), maxY)
+  };
+}
+
 function interactElement(el){
-  interact(el)
-  .draggable({
+  const preview = document.getElementById('preview');
+  interact(el).draggable({
     inertia: false,
     modifiers: [
       interact.modifiers.restrictRect({ restriction: 'parent' })
     ],
-    listeners: {
-      move(event) {
-        const x = parseFloat(el.style.left) || 0;
-        const y = parseFloat(el.style.top) || 0;
-        el.style.left = (x + event.dx) + 'px';
-        el.style.top = (y + event.dy) + 'px';
-        if(el === selected) renderProps();
-        generateCode();
+    listeners: { 
+      start() {
+        isDraggingOrResizing = true;
+      },
+      move(event){
+        let x = parseFloat(el.style.left) + event.dx;
+        let y = parseFloat(el.style.top) + event.dy;
+
+        // clamp to preview container bounds
+        const clamped = clampPosition(x, y, el.offsetWidth, el.offsetHeight, preview);
+        el.style.left = clamped.x + 'px';
+        el.style.top = clamped.y + 'px';
+
+        if(el === selected) {
+          renderProps();
+          generateCode();
+        }
+      },
+      end() {
+        isDraggingOrResizing = false;
       }
-    },
-    // support for mobile touch dragging
-    autoScroll: true,
-    ignoreFrom: 'input,textarea,select,button',
-  })
-  .resizable({
+    }
+  }).resizable({
     edges: { bottom: true, right: true },
     inertia: false,
     modifiers: [
       interact.modifiers.restrictEdges({ outer: 'parent' }),
-      interact.modifiers.restrictSize({ min: { width: 30, height: 20 } })
+      interact.modifiers.restrictSize({ min: { width: 20, height: 20 } })
     ],
     listeners: {
-      move(event) {
-        el.style.width = event.rect.width + 'px';
-        el.style.height = event.rect.height + 'px';
-        if(el === selected) renderProps();
-        generateCode();
+      start() {
+        isDraggingOrResizing = true;
+      },
+      move(event){
+        // Clamp width/height so it doesn't resize off bounds
+        const previewRect = preview.getBoundingClientRect();
+        const parentRect = el.parentElement.getBoundingClientRect();
+
+        let newWidth = event.rect.width;
+        let newHeight = event.rect.height;
+
+        // Clamp max size so it doesn't go out of preview
+        const maxWidth = preview.clientWidth - parseFloat(el.style.left);
+        const maxHeight = preview.clientHeight - parseFloat(el.style.top);
+        if(newWidth > maxWidth) newWidth = maxWidth;
+        if(newHeight > maxHeight) newHeight = maxHeight;
+
+        el.style.width = newWidth + 'px';
+        el.style.height = newHeight + 'px';
+
+        if(el === selected) {
+          renderProps();
+          generateCode();
+        }
+      },
+      end() {
+        isDraggingOrResizing = false;
       }
     }
   });
 }
 
 function generateCode(){
-  let code = 'local ScreenGui = Instance.new("ScreenGui")\n\n';
+  let code = 'local ScreenGui = Instance.new("ScreenGui")\n';
   [...document.querySelectorAll('.ui-element')].forEach(e => {
-    const nm = e.dataset.name.replace(/\s+/g, '_');
-    const t = e.dataset.type;
+    const nm=e.dataset.name, t=e.dataset.type;
     code += `local ${nm} = Instance.new("${t}")\n`;
     if(!['Folder','Model'].includes(t)){
-      const l = parseInt(e.style.left) || 0;
-      const tp = parseInt(e.style.top) || 0;
-      const w = parseInt(e.style.width) || 100;
-      const h = parseInt(e.style.height) || 50;
-      const [r,g,b] = (e.dataset.color || '255,255,255').split(',').map(Number);
-      code += `${nm}.Size = UDim2.new(0, ${w}, 0, ${h})\n`;
-      code += `${nm}.Position = UDim2.new(0, ${l}, 0, ${tp})\n`;
+      const l=parseInt(e.style.left), tp=parseInt(e.style.top), w=parseInt(e.style.width), h=parseInt(e.style.height);
+      const [r,g,b]=(e.dataset.color||'255,255,255').split(',').map(Number);
+      code += `${nm}.Size = UDim2.new(0, ${w}, 0, ${h})\n${nm}.Position = UDim2.new(0, ${l}, 0, ${tp})\n`;
       code += `${nm}.BackgroundColor3 = Color3.fromRGB(${r},${g},${b})\n`;
     }
     if(e.dataset.text && /Text(Label|Button)/.test(t)) code += `${nm}.Text = "${e.dataset.text}"\n`;
@@ -481,15 +360,14 @@ function generateCode(){
   document.getElementById('output').value = code;
 }
 
-function refresh(){
-  renderExplorer();
-  updateHighlight();
-  generateCode();
-  updateMode();
+function refresh(){ 
+  renderExplorer(); 
+  updateHighlight(); 
+  generateCode(); 
+  updateMode(); 
 }
 
 document.getElementById('preview').addEventListener('click', clearSelection);
-
 refresh();
 </script>
 </body>
