@@ -171,10 +171,6 @@
   </div>
 
 <script>
-function refresh(){
-  renderExplorer();
-  generateCode();
-}
 let idCounter = 0, selected = null, currentParent = null, clipboard = null, mode = 'move';
 let isDraggingOrResizing = false;
 
@@ -206,10 +202,9 @@ function addElement(){
   Object.assign(e.dataset,{
     id:idCounter,
     type:t,
-    name:`${t}${idCounter}`
+    name:`${t}${idCounter}`,
+    parent: currentParent?.dataset.id || 'ScreenGui'
   });
-
-  e.dataset.parent = (currentParent?.dataset?.id && currentParent.dataset.id !== e.dataset.id) ? currentParent.dataset.id : 'ScreenGui';
 
   if (isVisual) {
     e.style.cssText = 'left:50px; top:50px; width:100px; height:50px;';
@@ -224,8 +219,6 @@ function addElement(){
 
   refresh();
 }
-
-
 
 function clearSelection(){
   if(isDraggingOrResizing) return;
@@ -486,7 +479,7 @@ function generateCode(){
 }
 
 document.getElementById('preview').addEventListener('click', clearSelection);
-refresh()
+refresh();
 </script>
 </body>
 </html>
