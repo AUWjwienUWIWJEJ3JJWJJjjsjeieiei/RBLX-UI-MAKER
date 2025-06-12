@@ -6,25 +6,140 @@
   <link rel="stylesheet" href="./libs/gpickr.min.css" />
   <script src="./libs/gpickr.min.js"></script>
   <style>
-    body { font-family: sans-serif; display: flex; gap: 20px; padding: 20px; margin:0; height: 100vh; overflow: hidden; }
-    .preview { border:1px solid #aaa; width:500px; height:400px; position:relative; background:#f4f4f4; touch-action: none; user-select:none; }
-    .ui-element { position:absolute; border:1px solid #444; background:rgba(0,0,0,0.1); touch-action: none; user-select:none; }
-    .selected-border { outline:2px solid blue; }
-    #explorer { width:220px; border:1px solid #ccc; height:400px; overflow:auto; background:#fff; padding:5px; user-select:none; }
-    .explorer-item { padding:2px 4px; cursor:pointer; display:flex; align-items:center; user-select:none; }
-    .explorer-item.selected { background:#def; }
-    .toggle, .icon { width:16px; text-align:center; user-select:none; }
-    #panel { width:300px; display:flex; flex-direction:column; gap:8px; }
-    textarea { width:100%; height:200px; }
-    .context-menu { position:absolute; background:#fff; border:1px solid #ccc; z-index:1000; }
-    .context-menu div { padding:4px 8px; cursor:pointer; }
-    .context-menu div:hover { background:#eee; }
-    #modeButtons { margin:8px 0; }
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      padding: 20px;
+      margin: 0;
+      height: auto;
+      overflow-x: hidden;
+    }
+
+    .preview {
+      border: 1px solid #aaa;
+      width: 500px;
+      height: 400px;
+      position: relative;
+      background: #f4f4f4;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .ui-element {
+      position: absolute;
+      border: 1px solid #444;
+      background: rgba(0, 0, 0, 0.1);
+      touch-action: none;
+      user-select: none;
+    }
+
+    .selected-border {
+      outline: 2px solid blue;
+    }
+
+    #explorer {
+      width: 220px;
+      border: 1px solid #ccc;
+      height: 400px;
+      overflow: auto;
+      background: #fff;
+      padding: 5px;
+      user-select: none;
+    }
+
+    .explorer-item {
+      padding: 2px 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      user-select: none;
+    }
+
+    .explorer-item.selected {
+      background: #def;
+    }
+
+    .toggle, .icon {
+      width: 16px;
+      text-align: center;
+      user-select: none;
+    }
+
+    #panel {
+      width: 300px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 200px;
+    }
+
+    .context-menu {
+      position: absolute;
+      background: #fff;
+      border: 1px solid #ccc;
+      z-index: 1000;
+    }
+
+    .context-menu div {
+      padding: 4px 8px;
+      cursor: pointer;
+    }
+
+    .context-menu div:hover {
+      background: #eee;
+    }
+
+    #modeButtons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin: 8px 0;
+    }
+
+    button, select {
+      padding: 8px;
+      font-size: 16px;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        flex-direction: column;
+        padding: 10px;
+        overflow-y: auto;
+      }
+
+      .preview {
+        width: 100%;
+        height: 300px;
+      }
+
+      #explorer, #panel {
+        width: 100%;
+        height: auto;
+      }
+
+      button, select {
+        font-size: 16px;
+        padding: 10px;
+        width: 100%;
+        margin-top: 5px;
+      }
+
+      #modeButtons button {
+        width: 30%;
+        font-size: 14px;
+      }
+    }
   </style>
 </head>
 <body>
 
-<div>
   <h2>UI Builder</h2>
   <label>Type:
     <select id="instanceType">
@@ -34,28 +149,32 @@
   </label>
   <button onclick="addElement()">Add Element</button>
 
-<div id="modeButtons">
-  <button onclick="setMode('none')">❌ None</button>
-  <button onclick="setMode('move')">🔀 Move</button>
-  <button onclick="setMode('resize')">📐 Resize</button>
-</div>
+  <div id="modeButtons">
+    <button onclick="setMode('none')">❌ None</button>
+    <button onclick="setMode('move')">🔀 Move</button>
+    <button onclick="setMode('resize')">📐 Resize</button>
+  </div>
 
+  <div class="preview" id="preview"></div>
 
+  <div id="explorer">
+    <b>Explorer</b><br>
+    <div id="explorerList" onclick="clearSelection()"></div>
+  </div>
 
-<div id="explorer">
-  <b>Explorer</b><br>
-  <div id="explorerList" onclick="clearSelection()"></div>
-</div>
-
-<div id="panel">
-  <h3>Properties</h3>
-  <div id="propFields"></div>
-  <button onclick="applyProperties()">Apply</button>
-  <h3>Lua Code</h3>
-  <textarea id="output" readonly></textarea>
-</div>
+  <div id="panel">
+    <h3>Properties</h3>
+    <div id="propFields"></div>
+    <button onclick="applyProperties()">Apply</button>
+    <h3>Lua Code</h3>
+    <textarea id="output" readonly></textarea>
+  </div>
 
 <script>
+function refresh(){
+  renderExplorer();
+  generateCode();
+}
 let idCounter = 0, selected = null, currentParent = null, clipboard = null, mode = 'move';
 let isDraggingOrResizing = false;
 
@@ -77,30 +196,47 @@ const typeIcons = {
   Model: '📦'
 };
 
-function addElement(){
-  const t = document.getElementById('instanceType').value; 
+function addElement() {
+  const t = document.getElementById('instanceType').value;
   idCounter++;
-  const e = document.createElement('div'); 
-  e.className='ui-element';
-  Object.assign(e.dataset,{
-    id:idCounter,
-    type:t,
-    name:`${t}${idCounter}`,
-    parent: currentParent?.dataset.id || 'ScreenGui'
+
+  const e = document.createElement('div');
+  e.className = 'ui-element';
+
+  const isVisual = !['Folder', 'Model'].includes(t);
+
+  Object.assign(e.dataset, {
+    id: idCounter,
+    type: t,
+    name: `${t}${idCounter}`,
+    parent: selected?.dataset?.id || 'ScreenGui'
   });
-  e.style.cssText = 'left:50px; top:50px; width:100px; height:50px;';
-  ['color','text','image'].forEach(p=>delete e.dataset[p]);
-  e.addEventListener('click', ev=>{
-    ev.stopPropagation();
-    if (!isDraggingOrResizing) select(e,true);
-  });
-  document.getElementById('preview').appendChild(e);
-  interactElement(e);
-  refresh();
+
+  // Folder and Model don't appear visually, but must exist
+  if (isVisual) {
+    e.style.cssText = 'left:50px; top:50px; width:100px; height:50px;';
+    ['color','text','image'].forEach(p => delete e.dataset[p]);
+    e.addEventListener('click', ev => {
+      ev.stopPropagation();
+      if (!isDraggingOrResizing) select(e, true);
+    });
+    document.getElementById('preview').appendChild(e);
+    interactElement(e);
+  } else {
+    // For non-visual elements like Folder/Model, still append to preview for tracking
+    document.getElementById('preview').appendChild(e);
+  }
+
+  // Automatically expand in explorer
+  e.dataset._expanded = true;
+
+  select(e, true); // select it immediately
+  refresh(); // show it in explorer
 }
 
+
 function clearSelection(){
-  if(isDraggingOrResizing) return; // don't clear if dragging/resizing
+  if(isDraggingOrResizing) return;
   selected = null;
   currentParent = null;
   document.getElementById('propFields').innerHTML = '';
@@ -108,7 +244,7 @@ function clearSelection(){
 }
 
 function select(e, focusExplorer){
-  if(isDraggingOrResizing) return; // prevent selecting during drag/resize
+  if(isDraggingOrResizing) return;
   selected = e;
   currentParent = e;
   renderProps();
@@ -132,7 +268,7 @@ function renderProps(){
     div.innerHTML = `<label>${p}: <input id="prop${p}" autocomplete="off" /></label>`;
     cont.appendChild(div);
     let val;
-    if(['Left','Top','Width','Height'].includes(p)) val = parseInt(selected.style[p.toLowerCase()]);
+    if(['Left','Top','Width','Height'].includes(p)) val = parseInt(selected.style[p.toLowerCase()]) || 0;
     else val = selected.dataset[p.toLowerCase()] || '';
     document.getElementById('prop'+p).value = val;
   });
@@ -153,40 +289,40 @@ function applyProperties(){
 function renderExplorer(){
   const root = document.getElementById('explorerList'); 
   root.innerHTML = '';
+
   function build(pid, lvl){
-    document.querySelectorAll('.ui-element').forEach(e => {
+    [...document.querySelectorAll('.ui-element,[data-type="Folder"],[data-type="Model"]')].forEach(e => {
       if (e.dataset.parent === pid) {
         const row = document.createElement('div');
         row.className = 'explorer-item'+(e===selected?' selected':'');
         row.style.paddingLeft = (lvl * 12) + 'px';
 
-        // toggle for Folder/Model
         const toggle = document.createElement('span');
         toggle.className = 'toggle';
-        if(['Folder','Model'].includes(e.dataset.type)){
-          toggle.innerText = e.dataset._expanded ? '▼' : '▶';
-          toggle.onclick = ev => { 
+        const hasChildren = [...document.querySelectorAll('[data-parent="'+e.dataset.id+'"]')].length > 0;
+
+        if (hasChildren) {
+          if (!e.dataset._expanded) e.dataset._expanded = 'false';
+          toggle.innerText = (e.dataset._expanded === 'true') ? '▼' : '▶';
+          toggle.onclick = ev => {
             ev.stopPropagation();
-            e.dataset._expanded = !e.dataset._expanded; 
-            renderExplorer(); 
+            e.dataset._expanded = (e.dataset._expanded === 'true') ? 'false' : 'true';
+            renderExplorer();
           };
         } else {
           toggle.innerText = '';
         }
         row.appendChild(toggle);
 
-        // icon
         const ico = document.createElement('span');
         ico.className = 'icon';
         ico.innerText = typeIcons[e.dataset.type] || '?';
         row.appendChild(ico);
 
-        // name
         const nameSpan = document.createElement('span');
         nameSpan.textContent = e.dataset.name;
         row.appendChild(nameSpan);
 
-        // disable selection while dragging/resizing
         row.onclick = () => {
           if (!isDraggingOrResizing) select(e, false);
         };
@@ -196,10 +332,11 @@ function renderExplorer(){
         };
         root.appendChild(row);
 
-        if(e.dataset._expanded) build(e.dataset.id, lvl + 1);
+        if (e.dataset._expanded === 'true') build(e.dataset.id, lvl + 1);
       }
     });
   }
+
   build('ScreenGui', 0);
 }
 
@@ -230,8 +367,12 @@ function handleContext(cmd, el){
     else {
       const clone = clipboard.el.cloneNode(true);
       idCounter++; clone.dataset.id = idCounter;
-      selected.parentElement.appendChild(clone);
-      interactElement(clone);
+      clone.dataset.name = clone.dataset.type + idCounter;
+      clone.dataset.parent = selected.dataset.id;
+      if (clone.classList.contains('ui-element')) {
+        document.getElementById('preview').appendChild(clone);
+        interactElement(clone);
+      }
     }
   }
   if(cmd==='Rename'){
@@ -239,12 +380,11 @@ function handleContext(cmd, el){
     if(n) el.dataset.name = n;
   }
   if(cmd==='Delete'){
-    el.parentElement.removeChild(el);
+    el.remove();
     if(el===selected) selected=null;
   }
   refresh();
 }
-
 
 function updateMode(){
   document.querySelectorAll('.ui-element').forEach(el => {
@@ -255,17 +395,14 @@ function updateMode(){
         edges: { bottom: true, right: true },
         restrictEdges: { outer: 'parent' }
       });
-    } else { // mode === 'none'
+    } else {
       interact(el).draggable(false).resizable(false);
     }
   });
 }
 
-
-// Clamp helper to keep inside preview box
 function clampPosition(x, y, width, height, container) {
   const rect = container.getBoundingClientRect();
-  // convert to relative coords inside container
   const maxX = rect.width - width;
   const maxY = rect.height - height;
   return {
@@ -289,7 +426,6 @@ function interactElement(el){
         let x = parseFloat(el.style.left) + event.dx;
         let y = parseFloat(el.style.top) + event.dy;
 
-        // clamp to preview container bounds
         const clamped = clampPosition(x, y, el.offsetWidth, el.offsetHeight, preview);
         el.style.left = clamped.x + 'px';
         el.style.top = clamped.y + 'px';
@@ -315,14 +451,10 @@ function interactElement(el){
         isDraggingOrResizing = true;
       },
       move(event){
-        // Clamp width/height so it doesn't resize off bounds
         const previewRect = preview.getBoundingClientRect();
-        const parentRect = el.parentElement.getBoundingClientRect();
-
         let newWidth = event.rect.width;
         let newHeight = event.rect.height;
 
-        // Clamp max size so it doesn't go out of preview
         const maxWidth = preview.clientWidth - parseFloat(el.style.left);
         const maxHeight = preview.clientHeight - parseFloat(el.style.top);
         if(newWidth > maxWidth) newWidth = maxWidth;
@@ -345,7 +477,7 @@ function interactElement(el){
 
 function generateCode(){
   let code = 'local ScreenGui = Instance.new("ScreenGui")\n';
-  [...document.querySelectorAll('.ui-element')].forEach(e => {
+  [...document.querySelectorAll('.ui-element,[data-type="Folder"],[data-type="Model"]')].forEach(e => {
     const nm=e.dataset.name, t=e.dataset.type;
     code += `local ${nm} = Instance.new("${t}")\n`;
     if(!['Folder','Model'].includes(t)){
@@ -361,15 +493,8 @@ function generateCode(){
   document.getElementById('output').value = code;
 }
 
-function refresh(){ 
-  renderExplorer(); 
-  updateHighlight(); 
-  generateCode(); 
-  updateMode(); 
-}
-
 document.getElementById('preview').addEventListener('click', clearSelection);
-refresh();
+refresh()
 </script>
 </body>
 </html>
