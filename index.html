@@ -6,140 +6,25 @@
   <link rel="stylesheet" href="./libs/gpickr.min.css" />
   <script src="./libs/gpickr.min.js"></script>
   <style>
-    body {
-      font-family: sans-serif;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-      padding: 20px;
-      margin: 0;
-      height: auto;
-      overflow-x: hidden;
-    }
-
-    .preview {
-      border: 1px solid #aaa;
-      width: 500px;
-      height: 400px;
-      position: relative;
-      background: #f4f4f4;
-      touch-action: none;
-      user-select: none;
-    }
-
-    .ui-element {
-      position: absolute;
-      border: 1px solid #444;
-      background: rgba(0, 0, 0, 0.1);
-      touch-action: none;
-      user-select: none;
-    }
-
-    .selected-border {
-      outline: 2px solid blue;
-    }
-
-    #explorer {
-      width: 220px;
-      border: 1px solid #ccc;
-      height: 400px;
-      overflow: auto;
-      background: #fff;
-      padding: 5px;
-      user-select: none;
-    }
-
-    .explorer-item {
-      padding: 2px 4px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      user-select: none;
-    }
-
-    .explorer-item.selected {
-      background: #def;
-    }
-
-    .toggle, .icon {
-      width: 16px;
-      text-align: center;
-      user-select: none;
-    }
-
-    #panel {
-      width: 300px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    textarea {
-      width: 100%;
-      height: 200px;
-    }
-
-    .context-menu {
-      position: absolute;
-      background: #fff;
-      border: 1px solid #ccc;
-      z-index: 1000;
-    }
-
-    .context-menu div {
-      padding: 4px 8px;
-      cursor: pointer;
-    }
-
-    .context-menu div:hover {
-      background: #eee;
-    }
-
-    #modeButtons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-      margin: 8px 0;
-    }
-
-    button, select {
-      padding: 8px;
-      font-size: 16px;
-    }
-
-    @media (max-width: 768px) {
-      body {
-        flex-direction: column;
-        padding: 10px;
-        overflow-y: auto;
-      }
-
-      .preview {
-        width: 100%;
-        height: 300px;
-      }
-
-      #explorer, #panel {
-        width: 100%;
-        height: auto;
-      }
-
-      button, select {
-        font-size: 16px;
-        padding: 10px;
-        width: 100%;
-        margin-top: 5px;
-      }
-
-      #modeButtons button {
-        width: 30%;
-        font-size: 14px;
-      }
-    }
+    body { font-family: sans-serif; display: flex; gap: 20px; padding: 20px; margin:0; height: 100vh; overflow: hidden; }
+    .preview { border:1px solid #aaa; width:500px; height:400px; position:relative; background:#f4f4f4; touch-action: none; user-select:none; }
+    .ui-element { position:absolute; border:1px solid #444; background:rgba(0,0,0,0.1); touch-action: none; user-select:none; }
+    .selected-border { outline:2px solid blue; }
+    #explorer { width:220px; border:1px solid #ccc; height:400px; overflow:auto; background:#fff; padding:5px; user-select:none; }
+    .explorer-item { padding:2px 4px; cursor:pointer; display:flex; align-items:center; user-select:none; }
+    .explorer-item.selected { background:#def; }
+    .toggle, .icon { width:16px; text-align:center; user-select:none; }
+    #panel { width:300px; display:flex; flex-direction:column; gap:8px; }
+    textarea { width:100%; height:200px; }
+    .context-menu { position:absolute; background:#fff; border:1px solid #ccc; z-index:1000; }
+    .context-menu div { padding:4px 8px; cursor:pointer; }
+    .context-menu div:hover { background:#eee; }
+    #modeButtons { margin:8px 0; }
   </style>
 </head>
 <body>
 
+<div>
   <h2>UI Builder</h2>
   <label>Type:
     <select id="instanceType">
@@ -149,26 +34,26 @@
   </label>
   <button onclick="addElement()">Add Element</button>
 
-  <div id="modeButtons">
-    <button onclick="setMode('none')">❌ None</button>
-    <button onclick="setMode('move')">🔀 Move</button>
-    <button onclick="setMode('resize')">📐 Resize</button>
-  </div>
+<div id="modeButtons">
+  <button onclick="setMode('none')">❌ None</button>
+  <button onclick="setMode('move')">🔀 Move</button>
+  <button onclick="setMode('resize')">📐 Resize</button>
+</div>
 
-  <div class="preview" id="preview"></div>
 
-  <div id="explorer">
-    <b>Explorer</b><br>
-    <div id="explorerList" onclick="clearSelection()"></div>
-  </div>
 
-  <div id="panel">
-    <h3>Properties</h3>
-    <div id="propFields"></div>
-    <button onclick="applyProperties()">Apply</button>
-    <h3>Lua Code</h3>
-    <textarea id="output" readonly></textarea>
-  </div>
+<div id="explorer">
+  <b>Explorer</b><br>
+  <div id="explorerList" onclick="clearSelection()"></div>
+</div>
+
+<div id="panel">
+  <h3>Properties</h3>
+  <div id="propFields"></div>
+  <button onclick="applyProperties()">Apply</button>
+  <h3>Lua Code</h3>
+  <textarea id="output" readonly></textarea>
+</div>
 
 <script>
 let idCounter = 0, selected = null, currentParent = null, clipboard = null, mode = 'move';
@@ -358,6 +243,22 @@ function handleContext(cmd, el){
     if(el===selected) selected=null;
   }
   refresh();
+}
+
+
+function updateMode(){
+  document.querySelectorAll('.ui-element').forEach(el => {
+    if(mode === 'move') {
+      interact(el).draggable(true).resizable(false);
+    } else if(mode === 'resize') {
+      interact(el).draggable(false).resizable({
+        edges: { bottom: true, right: true },
+        restrictEdges: { outer: 'parent' }
+      });
+    } else { // mode === 'none'
+      interact(el).draggable(false).resizable(false);
+    }
+  });
 }
 
 
