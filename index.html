@@ -117,67 +117,18 @@ function updateHighlight(){
   });
 }
 
-
 function renderProps(){
-  const cont = document.getElementById('propFields');
+  const cont = document.getElementById('propFields'); 
   cont.innerHTML = '';
   if (!selected) return;
-
   typeProps[selected.dataset.type].forEach(p => {
     const div = document.createElement('div');
-    div.style.marginBottom = '6px';
-
-    if (p === 'Color') {
-      div.innerHTML = `<label>${p}: <span id="color-picker-label"></span></label><div id="color-picker"></div>`;
-      cont.appendChild(div);
-
-      // Destroy any existing Pickr instance
-      if (window.pickr) window.pickr.destroyAndRemove();
-
-      // Use the current color or fallback to white
-      const colorValue = selected.dataset.color || '255,255,255';
-
-      // Display the current color
-      document.getElementById('color-picker-label').textContent = `rgb(${colorValue})`;
-
-      // Initialize Pickr
-      window.pickr = Pickr.create({
-        el: '#color-picker',
-        theme: 'classic', // or 'monolith', 'nano'
-        default: `rgb(${colorValue})`,
-        components: {
-          preview: true,
-          opacity: true,
-          hue: true,
-          interaction: {
-            input: true,
-            save: true
-          }
-        }
-      });
-
-      pickr.on('save', (color) => {
-        const rgb = color.toRGBA().toString(0).match(/\d+,\d+,\d+/)[0];
-        selected.dataset.color = rgb;
-        selected.style.backgroundColor = `rgb(${rgb})`;
-        document.getElementById('color-picker-label').textContent = `rgb(${rgb})`;
-        pickr.hide();
-        generateCode();
-      });
-
-    } else {
-      div.innerHTML = `<label>${p}: <input id="prop${p}" /></label>`;
-      cont.appendChild(div);
-
-      let val;
-      if (['Left', 'Top', 'Width', 'Height'].includes(p)) {
-        val = parseInt(selected.style[p.toLowerCase()]) || 0;
-      } else {
-        val = selected.dataset[p.toLowerCase()] || '';
-      }
-
-      document.getElementById('prop' + p).value = val;
-    }
+    div.innerHTML = `<label>${p}: <input id="prop${p}" autocomplete="off" /></label>`;
+    cont.appendChild(div);
+    let val;
+    if(['Left','Top','Width','Height'].includes(p)) val = parseInt(selected.style[p.toLowerCase()]);
+    else val = selected.dataset[p.toLowerCase()] || '';
+    document.getElementById('prop'+p).value = val;
   });
 }
 
