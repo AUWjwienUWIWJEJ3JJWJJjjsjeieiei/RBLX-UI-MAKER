@@ -33,13 +33,17 @@
     </select>
   </label>
   <button onclick="addElement()">Add Element</button>
-
-<div id="modeButtons">
-  <button onclick="setMode('none')">❌ None</button>
-  <button onclick="setMode('move')">🔀 Move</button>
-  <button onclick="setMode('resize')">📐 Resize</button>
+  <div id="modeButtons">
+    <button onclick="setMode('move')">🔀 Move</button>
+    <button onclick="setMode('resize')">📐 Resize</button>
+  </div>
+  <div class="preview" id="preview" onclick="clearSelection()"></div>
 </div>
 
+<div id="explorer">
+  <b>Explorer</b><br>
+  <div id="explorerList" onclick="clearSelection()"></div>
+</div>
 
 <div id="panel">
   <h3>Properties</h3>
@@ -239,7 +243,6 @@ function handleContext(cmd, el){
   refresh();
 }
 
-
 function setMode(m){
   mode = m;
   updateMode();
@@ -249,17 +252,14 @@ function updateMode(){
   document.querySelectorAll('.ui-element').forEach(el => {
     if(mode === 'move') {
       interact(el).draggable(true).resizable(false);
-    } else if(mode === 'resize') {
+    } else {
       interact(el).draggable(false).resizable({
         edges: { bottom: true, right: true },
         restrictEdges: { outer: 'parent' }
       });
-    } else { // none
-      interact(el).draggable(false).resizable(false);
     }
   });
 }
-
 
 // Clamp helper to keep inside preview box
 function clampPosition(x, y, width, height, container) {
