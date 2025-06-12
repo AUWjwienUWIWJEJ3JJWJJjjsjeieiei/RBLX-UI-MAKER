@@ -197,25 +197,31 @@ function addElement(){
   idCounter++;
   const e = document.createElement('div'); 
   e.className='ui-element';
+
+  const isVisual = !['Folder', 'Model'].includes(t);
   Object.assign(e.dataset,{
     id:idCounter,
     type:t,
     name:`${t}${idCounter}`,
     parent: currentParent?.dataset.id || 'ScreenGui'
   });
-  e.style.cssText = 'left:50px; top:50px; width:100px; height:50px;';
-  ['color','text','image'].forEach(p=>delete e.dataset[p]);
-  e.addEventListener('click', ev=>{
-    ev.stopPropagation();
-    if (!isDraggingOrResizing) select(e,true);
-  });
-  document.getElementById('preview').appendChild(e);
-  interactElement(e);
+
+  if (isVisual) {
+    e.style.cssText = 'left:50px; top:50px; width:100px; height:50px;';
+    ['color','text','image'].forEach(p=>delete e.dataset[p]);
+    e.addEventListener('click', ev=>{
+      ev.stopPropagation();
+      if (!isDraggingOrResizing) select(e,true);
+    });
+    document.getElementById('preview').appendChild(e);
+    interactElement(e);
+  }
+
   refresh();
 }
 
 function clearSelection(){
-  if(isDraggingOrResizing) return; // don't clear if dragging/resizing
+  if(isDraggingOrResizing) return;
   selected = null;
   currentParent = null;
   document.getElementById('propFields').innerHTML = '';
@@ -223,7 +229,7 @@ function clearSelection(){
 }
 
 function select(e, focusExplorer){
-  if(isDraggingOrResizing) return; // prevent selecting during drag/resize
+  if(isDraggingOrResizing) return;
   selected = e;
   currentParent = e;
   renderProps();
@@ -247,7 +253,7 @@ function renderProps(){
     div.innerHTML = `<label>${p}: <input id="prop${p}" autocomplete="off" /></label>`;
     cont.appendChild(div);
     let val;
-    if(['Left','Top','Width','Height'].includes(p)) val = parseInt(selected.style[p.toLowerCase()]);
+    if(['Left','Top','Width','Height'].includes(p)) val = parseInt(selected.style[p.toLowerCase()]) || 0;
     else val = selected.dataset[p.toLowerCase()] || '';
     document.getElementById('prop'+p).value = val;
   });
@@ -268,40 +274,40 @@ function applyProperties(){
 function renderExplorer(){
   const root = document.getElementById('explorerList'); 
   root.innerHTML = '';
+
   function build(pid, lvl){
-    document.querySelectorAll('.ui-element').forEach(e => {
+    [...document.querySelectorAll('.ui-element,[data-type="Folder"],[data-type="Model"]')].forEach(e => {
       if (e.dataset.parent === pid) {
         const row = document.createElement('div');
         row.className = 'explorer-item'+(e===selected?' selected':'');
         row.style.paddingLeft = (lvl * 12) + 'px';
 
-        // toggle for Folder/Model
         const toggle = document.createElement('span');
         toggle.className = 'toggle';
-        if(['Folder','Model'].includes(e.dataset.type)){
-          toggle.innerText = e.dataset._expanded ? '▼' : '▶';
-          toggle.onclick = ev => { 
+        const hasChildren = [...document.querySelectorAll('[data-parent="'+e.dataset.id+'"]')].length > 0;
+
+        if (hasChildren) {
+          if (!e.dataset._expanded) e.dataset._expanded = 'false';
+          toggle.innerText = (e.dataset._expanded === 'true') ? '▼' : '▶';
+          toggle.onclick = ev => {
             ev.stopPropagation();
-            e.dataset._expanded = !e.dataset._expanded; 
-            renderExplorer(); 
+            e.dataset._expanded = (e.dataset._expanded === 'true') ? 'false' : 'true';
+            renderExplorer();
           };
         } else {
           toggle.innerText = '';
         }
         row.appendChild(toggle);
 
-        // icon
         const ico = document.createElement('span');
         ico.className = 'icon';
         ico.innerText = typeIcons[e.dataset.type] || '?';
         row.appendChild(ico);
 
-        // name
         const nameSpan = document.createElement('span');
         nameSpan.textContent = e.dataset.name;
         row.appendChild(nameSpan);
 
-        // disable selection while dragging/resizing
         row.onclick = () => {
           if (!isDraggingOrResizing) select(e, false);
         };
@@ -311,10 +317,11 @@ function renderExplorer(){
         };
         root.appendChild(row);
 
-        if(e.dataset._expanded) build(e.dataset.id, lvl + 1);
+        if (e.dataset._expanded === 'true') build(e.dataset.id, lvl + 1);
       }
     });
   }
+
   build('ScreenGui', 0);
 }
 
@@ -345,8 +352,12 @@ function handleContext(cmd, el){
     else {
       const clone = clipboard.el.cloneNode(true);
       idCounter++; clone.dataset.id = idCounter;
-      selected.parentElement.appendChild(clone);
-      interactElement(clone);
+      clone.dataset.name = clone.dataset.type + idCounter;
+      clone.dataset.parent = selected.dataset.id;
+      if (clone.classList.contains('ui-element')) {
+        document.getElementById('preview').appendChild(clone);
+        interactElement(clone);
+      }
     }
   }
   if(cmd==='Rename'){
@@ -354,17 +365,29 @@ function handleContext(cmd, el){
     if(n) el.dataset.name = n;
   }
   if(cmd==='Delete'){
-    el.parentElement.removeChild(el);
+    el.remove();
     if(el===selected) selected=null;
   }
   refresh();
 }
 
+function updateMode(){
+  document.querySelectorAll('.ui-element').forEach(el => {
+    if(mode === 'move') {
+      interact(el).draggable(true).resizable(false);
+    } else if(mode === 'resize') {
+      interact(el).draggable(false).resizable({
+        edges: { bottom: true, right: true },
+        restrictEdges: { outer: 'parent' }
+      });
+    } else {
+      interact(el).draggable(false).resizable(false);
+    }
+  });
+}
 
-// Clamp helper to keep inside preview box
 function clampPosition(x, y, width, height, container) {
   const rect = container.getBoundingClientRect();
-  // convert to relative coords inside container
   const maxX = rect.width - width;
   const maxY = rect.height - height;
   return {
@@ -388,7 +411,6 @@ function interactElement(el){
         let x = parseFloat(el.style.left) + event.dx;
         let y = parseFloat(el.style.top) + event.dy;
 
-        // clamp to preview container bounds
         const clamped = clampPosition(x, y, el.offsetWidth, el.offsetHeight, preview);
         el.style.left = clamped.x + 'px';
         el.style.top = clamped.y + 'px';
@@ -414,14 +436,10 @@ function interactElement(el){
         isDraggingOrResizing = true;
       },
       move(event){
-        // Clamp width/height so it doesn't resize off bounds
         const previewRect = preview.getBoundingClientRect();
-        const parentRect = el.parentElement.getBoundingClientRect();
-
         let newWidth = event.rect.width;
         let newHeight = event.rect.height;
 
-        // Clamp max size so it doesn't go out of preview
         const maxWidth = preview.clientWidth - parseFloat(el.style.left);
         const maxHeight = preview.clientHeight - parseFloat(el.style.top);
         if(newWidth > maxWidth) newWidth = maxWidth;
@@ -444,7 +462,7 @@ function interactElement(el){
 
 function generateCode(){
   let code = 'local ScreenGui = Instance.new("ScreenGui")\n';
-  [...document.querySelectorAll('.ui-element')].forEach(e => {
+  [...document.querySelectorAll('.ui-element,[data-type="Folder"],[data-type="Model"]')].forEach(e => {
     const nm=e.dataset.name, t=e.dataset.type;
     code += `local ${nm} = Instance.new("${t}")\n`;
     if(!['Folder','Model'].includes(t)){
@@ -458,13 +476,6 @@ function generateCode(){
     code += `${nm}.Parent = ${e.dataset.parent}\n\n`;
   });
   document.getElementById('output').value = code;
-}
-
-function refresh(){ 
-  renderExplorer(); 
-  updateHighlight(); 
-  generateCode(); 
-  updateMode(); 
 }
 
 document.getElementById('preview').addEventListener('click', clearSelection);
