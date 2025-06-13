@@ -2,36 +2,118 @@
 <html>
 <head>
   <title>Roblox UI Builder (Mobile Improved)</title>
-  <script src="./libs/interact.min.js"></script>
-  <link rel="stylesheet" href="./libs/gpickr.min.css" />
-  <script src="./libs/gpickr.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/interact.js/1.10.17/interact.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/gpickr/2.0.2/gpickr.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gpickr/2.0.2/gpickr.min.js"></script>
   <link rel="icon" href="./favicon.ico" type="image/x-icon">
 <style>
+  * {
+    box-sizing: border-box;
+  }
+
   body {
     font-family: sans-serif;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    padding: 20px;
     margin: 0;
-    height: auto;
-    overflow-x: hidden;
+    padding: 0;
+    height: 100vh;
+    overflow: hidden;
     background: #f0f2f5;
   }
 
-  h2 {
+  .header {
+    background: linear-gradient(135deg, #3b3bff, #5a5aff);
+    color: white;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  }
+
+  .header h1 {
+    margin: 0;
+    font-size: 24px;
+  }
+
+  .page-tabs {
+    display: flex;
+    gap: 10px;
+  }
+
+  .tab-button {
+    padding: 10px 20px;
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 16px;
+  }
+
+  .tab-button:hover {
+    background: rgba(255,255,255,0.3);
+  }
+
+  .tab-button.active {
+    background: white;
     color: #3b3bff;
+    font-weight: bold;
+  }
+
+  .page-container {
+    height: calc(100vh - 70px);
+    overflow: hidden;
+  }
+
+  .page {
+    display: none;
+    height: 100%;
+    padding: 20px;
+    overflow: auto;
+  }
+
+  .page.active {
+    display: block;
+  }
+
+  /* UI Builder Page Styles */
+  .ui-builder-layout {
+    display: flex;
+    gap: 20px;
+    height: calc(100% - 40px);
+  }
+
+  .ui-controls {
+    min-width: 250px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .control-section {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  .control-section h3 {
+    margin: 0 0 10px 0;
+    color: #3b3bff;
+    font-size: 16px;
   }
 
   .preview {
     border: 2px solid #888;
-    width: 500px;
-    height: 400px;
+    flex: 1;
+    height: 100%;
     position: relative;
     background: #ffffff;
     touch-action: none;
     user-select: none;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
   }
 
   .ui-element {
@@ -48,22 +130,29 @@
   }
 
   #explorer {
-    width: 220px;
+    width: 250px;
     border: 2px solid #ccc;
-    height: 400px;
+    height: 300px;
     overflow: auto;
     background: #ffffff;
     padding: 5px;
     user-select: none;
-    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-radius: 8px;
   }
 
   .explorer-item {
-    padding: 2px 4px;
+    padding: 4px 8px;
     cursor: pointer;
     display: flex;
     align-items: center;
     user-select: none;
+    border-radius: 4px;
+    margin: 1px 0;
+  }
+
+  .explorer-item:hover {
+    background: #f0f0f0;
   }
 
   .explorer-item.selected {
@@ -76,60 +165,92 @@
     user-select: none;
   }
 
-  #panel {
-    width: 300px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  textarea {
-    width: 100%;
-    height: 200px;
-    background: #1e1e1e;
-    color: #ffffff;
-    border: 1px solid #444;
-    font-family: monospace;
-    padding: 8px;
-    border-radius: 4px;
-  }
-
   .context-menu {
     position: absolute;
     background: #fff;
     border: 1px solid #ccc;
     z-index: 1000;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
   }
 
   .context-menu div {
-    padding: 4px 8px;
+    padding: 8px 12px;
     cursor: pointer;
   }
 
   .context-menu div:hover {
-    background: #eee;
+    background: #f0f0f0;
   }
 
-  #modeButtons {
+  /* Lua Editor Page Styles */
+  .lua-editor-layout {
+    display: flex;
+    gap: 20px;
+    height: calc(100% - 40px);
+  }
+
+  .lua-section {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .lua-editor-section {
+    flex: 1;
+    min-width: 400px;
+  }
+
+  .lua-output-section {
+    flex: 1;
+    min-width: 400px;
+  }
+
+  .lua-editor-section h3,
+  .lua-output-section h3 {
+    margin: 0 0 15px 0;
+    color: #3b3bff;
+    font-size: 20px;
+  }
+
+  #luaEditor, #output, #editableOutput {
+    width: 100%;
+    flex: 1;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    border: 1px solid #444;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    padding: 15px;
+    border-radius: 6px;
+    resize: none;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .button-group {
     display: flex;
     flex-wrap: wrap;
-    gap: 5px;
-    margin: 8px 0;
+    gap: 8px;
+    margin-top: 15px;
   }
 
   button, select {
-    padding: 8px 10px;
-    font-size: 16px;
+    padding: 10px 15px;
+    font-size: 14px;
     background: #3b3bff;
     color: white;
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    transition: background 0.3s ease;
+    transition: all 0.3s ease;
   }
 
   button:hover {
     background: #5a5aff;
+    transform: translateY(-1px);
   }
 
   select {
@@ -137,149 +258,200 @@
     color: black;
   }
 
-  #luaEditorContainer {
-    flex: 1;
-    min-width: 300px;
-    max-width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+  .property-field {
+    margin-bottom: 10px;
   }
 
-  #luaEditorContainer h3 {
-    margin: 0;
+  .property-field label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
     color: #333;
   }
 
-  #luaEditorBox {
-    height: 200px;
-    font-family: monospace;
-    background: #1e1e1e;
-    color: #d4d4d4;
-    padding: 10px;
-    border-radius: 5px;
-    border: 1px solid #444;
-    resize: vertical;
+  .property-field input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
   }
 
-  #luaButtons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  #luaButtons button {
-    flex: 1 0 30%;
+  .file-input {
     background: #4444cc;
     color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
     border: none;
-    padding: 8px;
-    border-radius: 5px;
+    cursor: pointer;
     font-size: 14px;
-    transition: background 0.2s ease;
   }
 
-  #luaButtons button:hover {
-    background: #5555ff;
+  .file-input::-webkit-file-upload-button {
+    display: none;
   }
 
   @media (max-width: 768px) {
-    body {
+    .ui-builder-layout,
+    .lua-editor-layout {
       flex-direction: column;
-      padding: 10px;
-      overflow-y: auto;
-    }
-
-    .preview {
-      width: 100%;
-      height: 300px;
-    }
-
-    #explorer, #panel, #luaEditorContainer {
-      width: 100%;
       height: auto;
     }
 
-    button, select {
-      font-size: 16px;
-      padding: 10px;
+    .ui-controls,
+    #explorer {
       width: 100%;
-      margin-top: 5px;
+      min-width: auto;
     }
 
-    #modeButtons button, #luaButtons button {
-      width: 45%;
-      font-size: 14px;
+    .preview {
+      height: 300px;
+    }
+
+    .lua-section {
+      min-width: auto;
+    }
+
+    .page {
+      height: auto;
+    }
+
+    .page-container {
+      height: auto;
+    }
+
+    body {
+      overflow: auto;
     }
   }
 </style>
-
-
 </head>
 <body>
 
-  <h2>UI Builder</h2>
-  <label>Type:
-    <select id="instanceType">
-      <option>Frame</option><option>TextLabel</option><option>TextButton</option>
-      <option>ImageLabel</option><option>Folder</option><option>Model</option>
-    </select>
-  </label>
-  <button onclick="addElement()">Add Element</button>
-<h3>Lua Editor</h3>
-    <textarea id="luaEditor" placeholder="Write or edit Lua code here..."></textarea>
-    <div id="luaEditorButtons">
-      <button onclick="cutLua()">✂️ Cut</button>
-      <button onclick="copyLua()">📋 Copy</button>
-      <button onclick="pasteLua()">📎 Paste</button>
-      <button onclick="importLua()">📥 Import</button>
-      <button onclick="downloadLua()">💾 Download</button>
+<div class="header">
+  <h1>🎮 Roblox UI Builder</h1>
+  <div class="page-tabs">
+    <button class="tab-button active" onclick="switchPage('ui-builder')">🔧 UI Builder</button>
+    <button class="tab-button" onclick="switchPage('lua-editor')">💻 Lua Editor</button>
+  </div>
+</div>
+
+<div class="page-container">
+  <!-- UI Builder Page -->
+  <div id="ui-builder" class="page active">
+    <div class="ui-builder-layout">
+      <div class="ui-controls">
+        <div class="control-section">
+          <h3>Add Elements</h3>
+          <label>Type:
+            <select id="instanceType">
+              <option>Frame</option>
+              <option>TextLabel</option>
+              <option>TextButton</option>
+              <option>ImageLabel</option>
+              <option>Folder</option>
+              <option>Model</option>
+            </select>
+          </label>
+          <button onclick="addElement()">➕ Add Element</button>
+        </div>
+
+        <div class="control-section">
+          <h3>Mode</h3>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button onclick="setMode('none')">❌ None</button>
+            <button onclick="setMode('move')">🔀 Move</button>
+            <button onclick="setMode('resize')">📐 Resize</button>
+          </div>
+        </div>
+
+        <div class="control-section">
+          <div id="explorer">
+            <b>🗂️ Explorer</b><br>
+            <div id="explorerList" onclick="clearSelection()"></div>
+          </div>
+        </div>
+
+        <div class="control-section">
+          <h3>Properties</h3>
+          <div id="propFields"></div>
+          <button onclick="applyProperties()">✅ Apply</button>
+        </div>
+      </div>
+
+      <div class="preview" id="preview"></div>
     </div>
-  <div id="modeButtons">
-    <button onclick="setMode('none')">❌ None</button>
-    <button onclick="setMode('move')">🔀 Move</button>
-    <button onclick="setMode('resize')">📐 Resize</button>
   </div>
 
-  <div class="preview" id="preview"></div>
+  <!-- Lua Editor Page -->
+  <div id="lua-editor" class="page">
+    <div class="lua-editor-layout">
+      <div class="lua-editor-section lua-section">
+        <h3>📝 Custom Lua Editor</h3>
+        <textarea id="luaEditor" placeholder="Write your custom Lua code here..."></textarea>
+        <div class="button-group">
+          <button onclick="cutLua()">✂️ Cut</button>
+          <button onclick="copyLua()">📋 Copy</button>
+          <button onclick="pasteLua()">📎 Paste</button>
+          <button onclick="importLua()">📥 Import</button>
+          <button onclick="downloadLua()">💾 Download</button>
+        </div>
+      </div>
 
-  <div id="explorer">
-    <b>Explorer</b><br>
-    <div id="explorerList" onclick="clearSelection()"></div>
+      <div class="lua-output-section lua-section">
+        <h3>🤖 Generated Code</h3>
+        <textarea id="output" readonly placeholder="Generated Lua code will appear here..."></textarea>
+        
+        <h3 style="margin-top: 20px;">✏️ Editable Output</h3>
+        <textarea id="editableOutput" placeholder="Edit the generated code here..."></textarea>
+        <div class="button-group">
+          <button onclick="copyText()">📋 Copy</button>
+          <button onclick="cutText()">✂️ Cut</button>
+          <button onclick="pasteText()">📎 Paste</button>
+          <button onclick="downloadText()">💾 Download</button>
+          <input type="file" class="file-input" accept=".lua,.txt,text/plain" onchange="importText(event)">
+        </div>
+      </div>
+    </div>
   </div>
-
-  <div id="panel">
-    <h3>Properties</h3>
-    <div id="propFields"></div>
-    <button onclick="applyProperties()">Apply</button>
-    <h3>Lua Code</h3>
-    <textarea id="output" readonly></textarea>
-  </div>
+</div>
 
 <script>
-<h3>Editable Script</h3>
-<textarea id="editableOutput"></textarea>
-<div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
-  <button onclick="copyText()">📋 Copy</button>
-  <button onclick="cutText()">✂️ Cut</button>
-  <button onclick="pasteText()">📥 Paste</button>
-  <button onclick="downloadText()">💾 Download</button>
-  <input type="file" accept=".lua,.txt,text/plain" onchange="importText(event)">
-</div>
-function refresh(){
+// Page switching functionality
+function switchPage(pageId) {
+  // Update tab buttons
+  document.querySelectorAll('.tab-button').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  event.target.classList.add('active');
+
+  // Update pages
+  document.querySelectorAll('.page').forEach(page => {
+    page.classList.remove('active');
+  });
+  document.getElementById(pageId).classList.add('active');
+
+  // Refresh data when switching to UI builder
+  if (pageId === 'ui-builder') {
+    refresh();
+  }
+}
+
+function refresh() {
   renderExplorer();
   generateCode();
 }
+
 let idCounter = 0, selected = null, currentParent = null, clipboard = null, mode = 'move';
 let isDraggingOrResizing = false;
 
 const typeProps = {
-  Frame:['Name','Left','Top','Width','Height','Color'],
-  TextLabel:['Name','Left','Top','Width','Height','Color','Text'],
-  TextButton:['Name','Left','Top','Width','Height','Color','Text'],
-  ImageLabel:['Name','Left','Top','Width','Height','Color','Image'],
-  Folder:['Name'],
-  Model:['Name']
+  Frame: ['Name', 'Left', 'Top', 'Width', 'Height', 'Color'],
+  TextLabel: ['Name', 'Left', 'Top', 'Width', 'Height', 'Color', 'Text'],
+  TextButton: ['Name', 'Left', 'Top', 'Width', 'Height', 'Color', 'Text'],
+  ImageLabel: ['Name', 'Left', 'Top', 'Width', 'Height', 'Color', 'Image'],
+  Folder: ['Name'],
+  Model: ['Name']
 };
 
 const typeIcons = {
@@ -290,6 +462,11 @@ const typeIcons = {
   Folder: '📁',
   Model: '📦'
 };
+
+function setMode(newMode) {
+  mode = newMode;
+  updateMode();
+}
 
 function addElement() {
   const t = document.getElementById('instanceType').value;
@@ -307,10 +484,9 @@ function addElement() {
     parent: selected?.dataset?.id || 'ScreenGui'
   });
 
-  // Folder and Model don't appear visually, but must exist
   if (isVisual) {
     e.style.cssText = 'left:50px; top:50px; width:100px; height:50px;';
-    ['color','text','image'].forEach(p => delete e.dataset[p]);
+    ['color', 'text', 'image'].forEach(p => delete e.dataset[p]);
     e.addEventListener('click', ev => {
       ev.stopPropagation();
       if (!isDraggingOrResizing) select(e, true);
@@ -318,83 +494,86 @@ function addElement() {
     document.getElementById('preview').appendChild(e);
     interactElement(e);
   } else {
-    // For non-visual elements like Folder/Model, still append to preview for tracking
     document.getElementById('preview').appendChild(e);
   }
 
-  // Automatically expand in explorer
   e.dataset._expanded = true;
-
-  select(e, true); // select it immediately
-  refresh(); // show it in explorer
+  select(e, true);
+  refresh();
 }
 
-
-function clearSelection(){
-  if(isDraggingOrResizing) return;
+function clearSelection() {
+  if (isDraggingOrResizing) return;
   selected = null;
   currentParent = null;
   document.getElementById('propFields').innerHTML = '';
   updateHighlight();
 }
 
-function select(e, focusExplorer){
-  if(isDraggingOrResizing) return;
+function select(e, focusExplorer) {
+  if (isDraggingOrResizing) return;
   selected = e;
   currentParent = e;
   renderProps();
   updateHighlight();
-  if(focusExplorer) renderExplorer();
+  if (focusExplorer) renderExplorer();
   generateCode();
 }
 
-function updateHighlight(){
+function updateHighlight() {
   document.querySelectorAll('.ui-element').forEach(el => {
     el.classList.toggle('selected-border', el === selected);
   });
 }
 
-function renderProps(){
-  const cont = document.getElementById('propFields'); 
+function renderProps() {
+  const cont = document.getElementById('propFields');
   cont.innerHTML = '';
   if (!selected) return;
+  
   typeProps[selected.dataset.type].forEach(p => {
     const div = document.createElement('div');
-    div.innerHTML = `<label>${p}: <input id="prop${p}" autocomplete="off" /></label>`;
+    div.className = 'property-field';
+    div.innerHTML = `<label>${p}:</label><input id="prop${p}" autocomplete="off" />`;
     cont.appendChild(div);
+    
     let val;
-    if(['Left','Top','Width','Height'].includes(p)) val = parseInt(selected.style[p.toLowerCase()]) || 0;
-    else val = selected.dataset[p.toLowerCase()] || '';
-    document.getElementById('prop'+p).value = val;
+    if (['Left', 'Top', 'Width', 'Height'].includes(p)) {
+      val = parseInt(selected.style[p.toLowerCase()]) || 0;
+    } else {
+      val = selected.dataset[p.toLowerCase()] || '';
+    }
+    document.getElementById('prop' + p).value = val;
   });
 }
 
-function applyProperties(){
-  if(!selected) return;
+function applyProperties() {
+  if (!selected) return;
   typeProps[selected.dataset.type].forEach(p => {
-    const v = document.getElementById('prop'+p).value;
-    if(['Left','Top','Width','Height'].includes(p)){
-      if(!isNaN(parseInt(v))) selected.style[p.toLowerCase()] = v+'px';
+    const v = document.getElementById('prop' + p).value;
+    if (['Left', 'Top', 'Width', 'Height'].includes(p)) {
+      if (!isNaN(parseInt(v))) selected.style[p.toLowerCase()] = v + 'px';
+    } else {
+      selected.dataset[p.toLowerCase()] = v;
     }
-    else selected.dataset[p.toLowerCase()] = v;
   });
   refresh();
 }
 
-function renderExplorer(){
-  const root = document.getElementById('explorerList'); 
+function renderExplorer() {
+  const root = document.getElementById('explorerList');
   root.innerHTML = '';
 
-  function build(pid, lvl){
+  function build(pid, lvl) {
     [...document.querySelectorAll('.ui-element,[data-type="Folder"],[data-type="Model"]')].forEach(e => {
       if (e.dataset.parent === pid) {
         const row = document.createElement('div');
-        row.className = 'explorer-item'+(e===selected?' selected':'');
+        row.className = 'explorer-item' + (e === selected ? ' selected' : '');
         row.style.paddingLeft = (lvl * 12) + 'px';
 
         const toggle = document.createElement('span');
         toggle.className = 'toggle';
-        const hasChildren = [...document.querySelectorAll('[data-parent="'+e.dataset.id+'"]')].length > 0;
+        const hasChildren = [...document.querySelectorAll('[data-parent="' + e.dataset.id + '"]')].length > 0;
 
         if (hasChildren) {
           if (!e.dataset._expanded) e.dataset._expanded = 'false';
@@ -421,9 +600,9 @@ function renderExplorer(){
         row.onclick = () => {
           if (!isDraggingOrResizing) select(e, false);
         };
-        row.oncontextmenu = ev => { 
-          ev.preventDefault(); 
-          contextMenu(ev.clientX, ev.clientY, e); 
+        row.oncontextmenu = ev => {
+          ev.preventDefault();
+          contextMenu(ev.clientX, ev.clientY, e);
         };
         root.appendChild(row);
 
@@ -435,10 +614,10 @@ function renderExplorer(){
   build('ScreenGui', 0);
 }
 
-function contextMenu(x, y, el){
+function contextMenu(x, y, el) {
   const menu = document.createElement('div');
   menu.className = 'context-menu';
-  ['Cut','Copy','Paste','Rename','Delete'].forEach(cmd => {
+  ['Cut', 'Copy', 'Paste', 'Rename', 'Delete'].forEach(cmd => {
     const item = document.createElement('div');
     item.innerText = cmd;
     item.onclick = () => {
@@ -447,21 +626,23 @@ function contextMenu(x, y, el){
     };
     menu.appendChild(item);
   });
-  menu.style.left = x+'px'; 
-  menu.style.top = y+'px';
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
   document.body.appendChild(menu);
-  document.addEventListener('click', () => { 
-    if(menu.parentNode) document.body.removeChild(menu); 
-  }, { once:true });
+  document.addEventListener('click', () => {
+    if (menu.parentNode) document.body.removeChild(menu);
+  }, { once: true });
 }
 
-function handleContext(cmd, el){
-  if(cmd==='Cut' || cmd==='Copy') clipboard = { el, mode:cmd.toLowerCase() };
-  if(cmd==='Paste' && clipboard && selected){
-    if(clipboard.mode==='cut') clipboard.el.dataset.parent = selected.dataset.id;
-    else {
+function handleContext(cmd, el) {
+  if (cmd === 'Cut' || cmd === 'Copy') clipboard = { el, mode: cmd.toLowerCase() };
+  if (cmd === 'Paste' && clipboard && selected) {
+    if (clipboard.mode === 'cut') {
+      clipboard.el.dataset.parent = selected.dataset.id;
+    } else {
       const clone = clipboard.el.cloneNode(true);
-      idCounter++; clone.dataset.id = idCounter;
+      idCounter++;
+      clone.dataset.id = idCounter;
       clone.dataset.name = clone.dataset.type + idCounter;
       clone.dataset.parent = selected.dataset.id;
       if (clone.classList.contains('ui-element')) {
@@ -470,22 +651,22 @@ function handleContext(cmd, el){
       }
     }
   }
-  if(cmd==='Rename'){
+  if (cmd === 'Rename') {
     const n = prompt('New Name:', el.dataset.name);
-    if(n) el.dataset.name = n;
+    if (n) el.dataset.name = n;
   }
-  if(cmd==='Delete'){
+  if (cmd === 'Delete') {
     el.remove();
-    if(el===selected) selected=null;
+    if (el === selected) selected = null;
   }
   refresh();
 }
 
-function updateMode(){
+function updateMode() {
   document.querySelectorAll('.ui-element').forEach(el => {
-    if(mode === 'move') {
+    if (mode === 'move') {
       interact(el).draggable(true).resizable(false);
-    } else if(mode === 'resize') {
+    } else if (mode === 'resize') {
       interact(el).draggable(false).resizable({
         edges: { bottom: true, right: true },
         restrictEdges: { outer: 'parent' }
@@ -506,18 +687,18 @@ function clampPosition(x, y, width, height, container) {
   };
 }
 
-function interactElement(el){
+function interactElement(el) {
   const preview = document.getElementById('preview');
   interact(el).draggable({
     inertia: false,
     modifiers: [
       interact.modifiers.restrictRect({ restriction: 'parent' })
     ],
-    listeners: { 
+    listeners: {
       start() {
         isDraggingOrResizing = true;
       },
-      move(event){
+      move(event) {
         let x = parseFloat(el.style.left) + event.dx;
         let y = parseFloat(el.style.top) + event.dy;
 
@@ -525,7 +706,7 @@ function interactElement(el){
         el.style.left = clamped.x + 'px';
         el.style.top = clamped.y + 'px';
 
-        if(el === selected) {
+        if (el === selected) {
           renderProps();
           generateCode();
         }
@@ -545,20 +726,20 @@ function interactElement(el){
       start() {
         isDraggingOrResizing = true;
       },
-      move(event){
+      move(event) {
         const previewRect = preview.getBoundingClientRect();
         let newWidth = event.rect.width;
         let newHeight = event.rect.height;
 
         const maxWidth = preview.clientWidth - parseFloat(el.style.left);
         const maxHeight = preview.clientHeight - parseFloat(el.style.top);
-        if(newWidth > maxWidth) newWidth = maxWidth;
-        if(newHeight > maxHeight) newHeight = maxHeight;
+        if (newWidth > maxWidth) newWidth = maxWidth;
+        if (newHeight > maxHeight) newHeight = maxHeight;
 
         el.style.width = newWidth + 'px';
         el.style.height = newHeight + 'px';
 
-        if(el === selected) {
+        if (el === selected) {
           renderProps();
           generateCode();
         }
@@ -570,26 +751,26 @@ function interactElement(el){
   });
 }
 
-function generateCode(){
+function generateCode() {
   let code = 'local ScreenGui = Instance.new("ScreenGui")\n';
   [...document.querySelectorAll('.ui-element,[data-type="Folder"],[data-type="Model"]')].forEach(e => {
-    const nm=e.dataset.name, t=e.dataset.type;
+    const nm = e.dataset.name, t = e.dataset.type;
     code += `local ${nm} = Instance.new("${t}")\n`;
-    if(!['Folder','Model'].includes(t)){
-      const l=parseInt(e.style.left), tp=parseInt(e.style.top), w=parseInt(e.style.width), h=parseInt(e.style.height);
-      const [r,g,b]=(e.dataset.color||'255,255,255').split(',').map(Number);
+    if (!['Folder', 'Model'].includes(t)) {
+      const l = parseInt(e.style.left), tp = parseInt(e.style.top), w = parseInt(e.style.width), h = parseInt(e.style.height);
+      const [r, g, b] = (e.dataset.color || '255,255,255').split(',').map(Number);
       code += `${nm}.Size = UDim2.new(0, ${w}, 0, ${h})\n${nm}.Position = UDim2.new(0, ${l}, 0, ${tp})\n`;
       code += `${nm}.BackgroundColor3 = Color3.fromRGB(${r},${g},${b})\n`;
     }
-    if(e.dataset.text && /Text(Label|Button)/.test(t)) code += `${nm}.Text = "${e.dataset.text}"\n`;
-    if(e.dataset.image) code += `${nm}.Image = "rbxassetid://${e.dataset.image}"\n`;
+    if (e.dataset.text && /Text(Label|Button)/.test(t)) code += `${nm}.Text = "${e.dataset.text}"\n`;
+    if (e.dataset.image) code += `${nm}.Image = "rbxassetid://${e.dataset.image}"\n`;
     code += `${nm}.Parent = ${e.dataset.parent}\n\n`;
   });
   document.getElementById('output').value = code;
+  document.getElementById('editableOutput').value = code;
 }
 
-document.getElementById('preview').addEventListener('click', clearSelection);
-refresh()
+// Lua Editor Functions
 function cutLua() {
   const editor = document.getElementById('luaEditor');
   navigator.clipboard.writeText(editor.value);
@@ -633,6 +814,50 @@ function downloadLua() {
   a.click();
   URL.revokeObjectURL(a.href);
 }
+
+// Editable Output Functions
+function copyText() {
+  const editor = document.getElementById('editableOutput');
+  navigator.clipboard.writeText(editor.value);
+}
+
+function cutText() {
+  const editor = document.getElementById('editableOutput');
+  navigator.clipboard.writeText(editor.value);
+  editor.value = '';
+}
+
+function pasteText() {
+  const editor = document.getElementById('editableOutput');
+  navigator.clipboard.readText().then(text => {
+    editor.value += text;
+  });
+}
+
+function downloadText() {
+  const content = document.getElementById('editableOutput').value;
+  const blob = new Blob([content], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'edited_script.lua';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function importText(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('editableOutput').value = e.target.result;
+  };
+  reader.readAsText(file);
+}
+
+// Initialize
+document.getElementById('preview').addEventListener('click', clearSelection);
+refresh();
 </script>
+
 </body>
 </html>
