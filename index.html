@@ -6,138 +6,215 @@
   <link rel="stylesheet" href="./libs/gpickr.min.css" />
   <script src="./libs/gpickr.min.js"></script>
   <link rel="icon" href="./favicon.ico" type="image/x-icon">
-  <style>
+<style>
+  body {
+    font-family: sans-serif;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    padding: 20px;
+    margin: 0;
+    height: auto;
+    overflow-x: hidden;
+    background: #f0f2f5;
+  }
+
+  h2 {
+    color: #3b3bff;
+  }
+
+  .preview {
+    border: 2px solid #888;
+    width: 500px;
+    height: 400px;
+    position: relative;
+    background: #ffffff;
+    touch-action: none;
+    user-select: none;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  }
+
+  .ui-element {
+    position: absolute;
+    border: 2px dashed #555;
+    background: rgba(0, 128, 255, 0.1);
+    touch-action: none;
+    user-select: none;
+    border-radius: 6px;
+  }
+
+  .selected-border {
+    outline: 3px solid #3b3bff;
+  }
+
+  #explorer {
+    width: 220px;
+    border: 2px solid #ccc;
+    height: 400px;
+    overflow: auto;
+    background: #ffffff;
+    padding: 5px;
+    user-select: none;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+  }
+
+  .explorer-item {
+    padding: 2px 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    user-select: none;
+  }
+
+  .explorer-item.selected {
+    background: #cce8ff;
+  }
+
+  .toggle, .icon {
+    width: 16px;
+    text-align: center;
+    user-select: none;
+  }
+
+  #panel {
+    width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  textarea {
+    width: 100%;
+    height: 200px;
+    background: #1e1e1e;
+    color: #ffffff;
+    border: 1px solid #444;
+    font-family: monospace;
+    padding: 8px;
+    border-radius: 4px;
+  }
+
+  .context-menu {
+    position: absolute;
+    background: #fff;
+    border: 1px solid #ccc;
+    z-index: 1000;
+  }
+
+  .context-menu div {
+    padding: 4px 8px;
+    cursor: pointer;
+  }
+
+  .context-menu div:hover {
+    background: #eee;
+  }
+
+  #modeButtons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 8px 0;
+  }
+
+  button, select {
+    padding: 8px 10px;
+    font-size: 16px;
+    background: #3b3bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+  }
+
+  button:hover {
+    background: #5a5aff;
+  }
+
+  select {
+    background: #e4e4ff;
+    color: black;
+  }
+
+  #luaEditorContainer {
+    flex: 1;
+    min-width: 300px;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  #luaEditorContainer h3 {
+    margin: 0;
+    color: #333;
+  }
+
+  #luaEditorBox {
+    height: 200px;
+    font-family: monospace;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #444;
+    resize: vertical;
+  }
+
+  #luaButtons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  #luaButtons button {
+    flex: 1 0 30%;
+    background: #4444cc;
+    color: white;
+    border: none;
+    padding: 8px;
+    border-radius: 5px;
+    font-size: 14px;
+    transition: background 0.2s ease;
+  }
+
+  #luaButtons button:hover {
+    background: #5555ff;
+  }
+
+  @media (max-width: 768px) {
     body {
-      font-family: sans-serif;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-      padding: 20px;
-      margin: 0;
-      height: auto;
-      overflow-x: hidden;
+      flex-direction: column;
+      padding: 10px;
+      overflow-y: auto;
     }
 
     .preview {
-      border: 1px solid #aaa;
-      width: 500px;
-      height: 400px;
-      position: relative;
-      background: #f4f4f4;
-      touch-action: none;
-      user-select: none;
-    }
-
-    .ui-element {
-      position: absolute;
-      border: 1px solid #444;
-      background: rgba(0, 0, 0, 0.1);
-      touch-action: none;
-      user-select: none;
-    }
-
-    .selected-border {
-      outline: 2px solid blue;
-    }
-
-    #explorer {
-      width: 220px;
-      border: 1px solid #ccc;
-      height: 400px;
-      overflow: auto;
-      background: #fff;
-      padding: 5px;
-      user-select: none;
-    }
-
-    .explorer-item {
-      padding: 2px 4px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      user-select: none;
-    }
-
-    .explorer-item.selected {
-      background: #def;
-    }
-
-    .toggle, .icon {
-      width: 16px;
-      text-align: center;
-      user-select: none;
-    }
-
-    #panel {
-      width: 300px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    textarea {
       width: 100%;
-      height: 200px;
+      height: 300px;
     }
 
-    .context-menu {
-      position: absolute;
-      background: #fff;
-      border: 1px solid #ccc;
-      z-index: 1000;
-    }
-
-    .context-menu div {
-      padding: 4px 8px;
-      cursor: pointer;
-    }
-
-    .context-menu div:hover {
-      background: #eee;
-    }
-
-    #modeButtons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-      margin: 8px 0;
+    #explorer, #panel, #luaEditorContainer {
+      width: 100%;
+      height: auto;
     }
 
     button, select {
-      padding: 8px;
       font-size: 16px;
+      padding: 10px;
+      width: 100%;
+      margin-top: 5px;
     }
 
-    @media (max-width: 768px) {
-      body {
-        flex-direction: column;
-        padding: 10px;
-        overflow-y: auto;
-      }
-
-      .preview {
-        width: 100%;
-        height: 300px;
-      }
-
-      #explorer, #panel {
-        width: 100%;
-        height: auto;
-      }
-
-      button, select {
-        font-size: 16px;
-        padding: 10px;
-        width: 100%;
-        margin-top: 5px;
-      }
-
-      #modeButtons button {
-        width: 30%;
-        font-size: 14px;
-      }
+    #modeButtons button, #luaButtons button {
+      width: 45%;
+      font-size: 14px;
     }
-  </style>
+  }
+</style>
+
+
 </head>
 <body>
 
@@ -149,7 +226,15 @@
     </select>
   </label>
   <button onclick="addElement()">Add Element</button>
-
+<h3>Lua Editor</h3>
+    <textarea id="luaEditor" placeholder="Write or edit Lua code here..."></textarea>
+    <div id="luaEditorButtons">
+      <button onclick="cutLua()">✂️ Cut</button>
+      <button onclick="copyLua()">📋 Copy</button>
+      <button onclick="pasteLua()">📎 Paste</button>
+      <button onclick="importLua()">📥 Import</button>
+      <button onclick="downloadLua()">💾 Download</button>
+    </div>
   <div id="modeButtons">
     <button onclick="setMode('none')">❌ None</button>
     <button onclick="setMode('move')">🔀 Move</button>
@@ -172,6 +257,15 @@
   </div>
 
 <script>
+<h3>Editable Script</h3>
+<textarea id="editableOutput"></textarea>
+<div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
+  <button onclick="copyText()">📋 Copy</button>
+  <button onclick="cutText()">✂️ Cut</button>
+  <button onclick="pasteText()">📥 Paste</button>
+  <button onclick="downloadText()">💾 Download</button>
+  <input type="file" accept=".lua,.txt,text/plain" onchange="importText(event)">
+</div>
 function refresh(){
   renderExplorer();
   generateCode();
@@ -496,6 +590,49 @@ function generateCode(){
 
 document.getElementById('preview').addEventListener('click', clearSelection);
 refresh()
+function cutLua() {
+  const editor = document.getElementById('luaEditor');
+  navigator.clipboard.writeText(editor.value);
+  editor.value = '';
+}
+
+function copyLua() {
+  const editor = document.getElementById('luaEditor');
+  navigator.clipboard.writeText(editor.value);
+}
+
+function pasteLua() {
+  const editor = document.getElementById('luaEditor');
+  navigator.clipboard.readText().then(text => {
+    editor.value += text;
+  });
+}
+
+function importLua() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.lua,.txt';
+  input.onchange = () => {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('luaEditor').value = e.target.result;
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function downloadLua() {
+  const content = document.getElementById('luaEditor').value;
+  const blob = new Blob([content], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'script.lua';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 </script>
 </body>
 </html>
