@@ -1115,52 +1115,55 @@ function interactElement(el) {
     el.appendChild(handle);
   }
 
-  interact(el).draggable({
-    allowFrom: '.drag-handle',
-    inertia: false,
-    modifiers: [interact.modifiers.restrictRect({ restriction: 'parent' })],
-    listeners: {
-      start() { isDraggingOrResizing = true; },
-      move(event) {
-        const parent = document.querySelector(`[data-id="${el.dataset.parent}"]`) || preview;
-        let x = parseFloat(el.style.left) + event.dx;
-        let y = parseFloat(el.style.top) + event.dy;
-        const clamped = clampPosition(x, y, el.offsetWidth, el.offsetHeight, parent);
-        el.style.left = clamped.x + 'px';
-        el.style.top = clamped.y + 'px';
-        if (el === selected) {
-          renderProps();
-          generateCode();
-        }
-      },
-      end() { isDraggingOrResizing = false; }
-    }
-  }).resizable({
-    edges: { bottom: true, right: true },
-    inertia: false,
-    modifiers: [
-      interact.modifiers.restrictEdges({ outer: 'parent' }),
-      interact.modifiers.restrictSize({ min: { width: 20, height: 20 } })
-    ],
-    listeners: {
-      start() { isDraggingOrResizing = true; },
-      move(event) {
-        const parent = document.querySelector(`[data-id="${el.dataset.parent}"]`) || preview;
-        let newWidth = event.rect.width;
-        let newHeight = event.rect.height;
-        const maxWidth = parent.clientWidth - parseFloat(el.style.left);
-        const maxHeight = parent.clientHeight - parseFloat(el.style.top);
-        el.style.width = Math.min(newWidth, maxWidth) + 'px';
-        el.style.height = Math.min(newHeight, maxHeight) + 'px';
-        if (el === selected) {
-          renderProps();
-          generateCode();
-        }
-      },
-      end() { isDraggingOrResizing = false; }
-    }
-  });
+  interact(el)
+    .draggable({
+      allowFrom: '.drag-handle',
+      inertia: false,
+      modifiers: [interact.modifiers.restrictRect({ restriction: 'parent' })],
+      listeners: {
+        start() { isDraggingOrResizing = true; },
+        move(event) {
+          const parent = document.querySelector(`[data-id="${el.dataset.parent}"]`) || preview;
+          let x = parseFloat(el.style.left) + event.dx;
+          let y = parseFloat(el.style.top) + event.dy;
+          const clamped = clampPosition(x, y, el.offsetWidth, el.offsetHeight, parent);
+          el.style.left = clamped.x + 'px';
+          el.style.top = clamped.y + 'px';
+          if (el === selected) {
+            renderProps();
+            generateCode();
+          }
+        },
+        end() { isDraggingOrResizing = false; }
+      }
+    })
+    .resizable({
+      edges: { bottom: true, right: true },
+      inertia: false,
+      modifiers: [
+        interact.modifiers.restrictEdges({ outer: 'parent' }),
+        interact.modifiers.restrictSize({ min: { width: 20, height: 20 } })
+      ],
+      listeners: {
+        start() { isDraggingOrResizing = true; },
+        move(event) {
+          const parent = document.querySelector(`[data-id="${el.dataset.parent}"]`) || preview;
+          let newWidth = event.rect.width;
+          let newHeight = event.rect.height;
+          const maxWidth = parent.clientWidth - parseFloat(el.style.left);
+          const maxHeight = parent.clientHeight - parseFloat(el.style.top);
+          el.style.width = Math.min(newWidth, maxWidth) + 'px';
+          el.style.height = Math.min(newHeight, maxHeight) + 'px';
+          if (el === selected) {
+            renderProps();
+            generateCode();
+          }
+        },
+        end() { isDraggingOrResizing = false; }
+      }
+    });
 }
+
 
 function generateCode() {
   let code = '';
