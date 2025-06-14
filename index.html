@@ -11,7 +11,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-lua.min.js"></script>
   
   <!-- iro.js for color picker -->
-  <script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5.5.2/dist/iro.min.js""></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/iro.js/5.5.2/iro.min.js"></script>
 
 <style>
   * {
@@ -129,7 +129,7 @@
     background: rgba(0, 128, 255, 0.1);
     touch-action: none;
     user-select: none;
-    border-radius: 0px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -494,7 +494,6 @@
               <option>ImageLabel</option>
               <option>Folder</option>
               <option>Model</option>
-              <option>ScreenGui</option>
             </select>
           </label>
           <button onclick="addElement()">➕ Add Element</button>
@@ -605,7 +604,6 @@ function refresh() {
 }
 
 const typeProps = {
-  ScreenGui: ['Name', 'Parent'],
   Frame: ['Name', 'Left', 'Top', 'Width', 'Height', 'Color', 'TextXAlignment', 'TextYAlignment'],
   TextLabel: ['Name', 'Left', 'Top', 'Width', 'Height', 'Color', 'Text', 'TextColor', 'TextXAlignment', 'TextYAlignment'],
   TextButton: ['Name', 'Left', 'Top', 'Width', 'Height', 'Color', 'Text', 'TextColor', 'TextXAlignment', 'TextYAlignment'],
@@ -615,7 +613,6 @@ const typeProps = {
 };
 
 const typeIcons = {
-  ScreenGui: '📱',
   Frame: '☐',
   TextLabel: 'T',
   TextButton: '↿',
@@ -623,7 +620,6 @@ const typeIcons = {
   Folder: '📁',
   Model: '📦'
 };
-
 
 const alignmentOptions = {
   TextXAlignment: ['Left', 'Center', 'Right'],
@@ -1116,7 +1112,7 @@ function interactElement(el) {
 }
 
 function generateCode() {
-  let code = 'local ScreenGui = Instance.new("ScreenGui")\nScreenGui.Parent = game:GetService("CoreGui")\n';
+  let code = 'local ScreenGui = Instance.new("ScreenGui")\n';
   [...document.querySelectorAll('.ui-element,[data-type="Folder"],[data-type="Model"]')].forEach(e => {
     const nm = e.dataset.name, t = e.dataset.type;
     code += `local ${nm} = Instance.new("${t}")\n`;
@@ -1181,17 +1177,9 @@ function pasteLua() {
   const editor = document.getElementById('luaEditor');
   navigator.clipboard.readText().then(text => {
     editor.value += text;
-    // Apply syntax highlighting if using a library like CodeMirror
-    highlightLuaEditor();
   });
 }
 
-// new function for syntax
-function highlightLuaEditor() {
-  // This would require implementing CodeMirror or similar.
-  const editor = document.getElementById('luaEditor');
-  editor.style.fontFamily = "'Monaco', 'Menlo', 'Ubuntu Mono', monospace";
-}
 function importLua() {
   const input = document.createElement('input');
   input.type = 'file';
@@ -1234,8 +1222,6 @@ function pasteText() {
   const editor = document.getElementById('editableOutput');
   navigator.clipboard.readText().then(text => {
     editor.value += text;
-    document.getElementById('output').textContent = editor.value;
-    Prism.highlightElement(document.getElementById('output'));
   });
 }
 
