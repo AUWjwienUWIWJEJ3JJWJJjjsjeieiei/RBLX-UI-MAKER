@@ -467,6 +467,15 @@
       overflow: auto;
     }
   }
+
+#screengui-border {
+  position: absolute;
+  border: 2px dashed #3b3bff;
+  pointer-events: none;
+  display: none;
+  z-index: 99;
+}
+
 </style>
 </head>
 <body>
@@ -523,7 +532,9 @@
         </div>
       </div>
       
-      <div class="preview" id="preview"></div>
+      <div class="preview" id="preview">
+  <div id="screengui-border"></div>
+</div>
     </div>
   </div>
   
@@ -642,7 +653,7 @@ function addElement() {
   const e = document.createElement('div');
   e.className = 'ui-element';
   
-  const isVisual = !['Folder', 'Model'].includes(t);
+  const isVisual = !['Folder', 'Model', 'ScreenGui'].includes(t);
   const isText = ['TextLabel', 'TextButton'].includes(t);
   
   if (isText) {
@@ -696,14 +707,39 @@ function select(e, focusExplorer) {
   currentParent = e;
   renderProps();
   updateHighlight();
+const sgPreview = document.getElementById('screengui-border');
+  if (selected.dataset.type === 'ScreenGui') {
+    sgPreview.style.display = 'block';
+    const children = [...document.querySelectorAll(`[data-parent="${selected.dataset.id}"]`)];
+    let maxRight = 0, maxBottom = 0;
+    children.forEach(child => {
+      const left = parseInt(child.style.left || 0);
+      const top = parseInt(child.style.top || 0);
+      const width = parseInt(child.style.width || 0);
+      const height = parseInt(child.style.height || 0);
+      maxRight = Math.max(maxRight, left + width);
+      maxBottom = Math.max(maxBottom, top + height);
+    });
+    sgPreview.style.left = '0px';
+    sgPreview.style.top = '0px';
+    sgPreview.style.width = maxRight + 'px';
+    sgPreview.style.height = maxBottom + 'px';
+  } else {
+    sgPreview.style.display = 'none';
+  }
   if (focusExplorer) renderExplorer();
   generateCode();
 }
 
 function updateHighlight() {
   document.querySelectorAll('.ui-element').forEach(el => {
-    el.classList.toggle('selected-border', el === selected);
+    if (el.dataset.type !== 'ScreenGui') {
+      el.classList.toggle('selected-border', el === selected);
+    } else {
+      el.classList.remove('selected-border');
+    }
   });
+});
 }
 
 function createColorField(propName, value) {
@@ -929,7 +965,8 @@ function renderExplorer() {
   root.innerHTML = '';
   
   function build(pid, lvl) {
-    [...document.querySelectorAll('.ui-element,[data-type="Folder"],[data-type="Model"]')].forEach(e => {
+    [...document.querySelectorAll('.ui-element,[data-type="Folder"],[data-type="Model"],[data-type="ScreenGui"]')].forEach(e => {
+  if (e.dataset.type === 'ScreenGui') return;
       if (e.dataset.parent === pid) {
         const row = document.createElement('div');
         row.className = 'explorer-item' + (e === selected ? ' selected' : '');
@@ -1117,7 +1154,8 @@ function interactElement(el) {
 
 function generateCode() {
   let code = 'local ScreenGui = Instance.new("ScreenGui")\nScreenGui.Parent = game:GetService("CoreGui")\n';
-  [...document.querySelectorAll('.ui-element,[data-type="Folder"],[data-type="Model"]')].forEach(e => {
+  [...document.querySelectorAll('.ui-element,[data-type="Folder"],[data-type="Model"],[data-type="ScreenGui"]')].forEach(e => {
+  if (e.dataset.type === 'ScreenGui') return;
     const nm = e.dataset.name, t = e.dataset.type;
     code += `local ${nm} = Instance.new("${t}")\n`;
     if (!['Folder', 'Model'].includes(t)) {
