@@ -1,25 +1,32 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Roblox UI Builder</title>
-  <script src="./libs/interact.js-1.10.17"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/gpickr/2.0.2/gpickr.min.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gpickr/2.0.2/gpickr.min.js"></script>
-  <link rel="icon" href="./favicon.ico" type="image/x-icon">
+  <title>Roblox UI Builder - Enhanced</title>
+  <!-- Interact.js for drag/resize -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/interact.js/1.10.17/interact.min.js"></script>
+  
+  <!-- Prism.js for syntax highlighting -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-lua.min.js"></script>
+  
+  <!-- iro.js for color picker -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/iro.js/5.5.2/iro.min.js"></script>
+
 <style>
   * {
     box-sizing: border-box;
   }
-
+  
   body {
-    font-family: sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     margin: 0;
     padding: 0;
     height: 100vh;
     overflow: hidden;
     background: #f0f2f5;
   }
-
+  
   .header {
     background: linear-gradient(135deg, #3b3bff, #5a5aff);
     color: white;
@@ -29,17 +36,17 @@
     align-items: center;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
   }
-
+  
   .header h1 {
     margin: 0;
     font-size: 24px;
   }
-
+  
   .page-tabs {
     display: flex;
     gap: 10px;
   }
-
+  
   .tab-button {
     padding: 10px 20px;
     background: rgba(255,255,255,0.2);
@@ -50,60 +57,60 @@
     transition: all 0.3s ease;
     font-size: 16px;
   }
-
+  
   .tab-button:hover {
     background: rgba(255,255,255,0.3);
   }
-
+  
   .tab-button.active {
     background: white;
     color: #3b3bff;
     font-weight: bold;
   }
-
+  
   .page-container {
     height: calc(100vh - 70px);
     overflow: hidden;
   }
-
+  
   .page {
     display: none;
     height: 100%;
     padding: 20px;
     overflow: auto;
   }
-
+  
   .page.active {
     display: block;
   }
-
+  
   /* UI Builder Page Styles */
   .ui-builder-layout {
     display: flex;
     gap: 20px;
     height: calc(100% - 40px);
   }
-
+  
   .ui-controls {
-    min-width: 250px;
+    min-width: 280px;
     display: flex;
     flex-direction: column;
     gap: 15px;
   }
-
+  
   .control-section {
     background: white;
     padding: 15px;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   }
-
+  
   .control-section h3 {
     margin: 0 0 10px 0;
     color: #3b3bff;
     font-size: 16px;
   }
-
+  
   .preview {
     border: 2px solid #888;
     flex: 1;
@@ -115,7 +122,7 @@
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     border-radius: 8px;
   }
-
+  
   .ui-element {
     position: absolute;
     border: 2px dashed #555;
@@ -123,14 +130,26 @@
     touch-action: none;
     user-select: none;
     border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
-
+  
+  .ui-element.text-element {
+    background: transparent;
+    border: 1px dashed #ccc;
+    color: #333;
+    font-size: 14px;
+    padding: 4px;
+  }
+  
   .selected-border {
     outline: 3px solid #3b3bff;
   }
-
+  
   #explorer {
-    width: 250px;
+    width: 100%;
     border: 2px solid #ccc;
     height: 300px;
     overflow: auto;
@@ -140,7 +159,7 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     border-radius: 8px;
   }
-
+  
   .explorer-item {
     padding: 4px 8px;
     cursor: pointer;
@@ -150,21 +169,21 @@
     border-radius: 4px;
     margin: 1px 0;
   }
-
+  
   .explorer-item:hover {
     background: #f0f0f0;
   }
-
+  
   .explorer-item.selected {
     background: #cce8ff;
   }
-
+  
   .toggle, .icon {
     width: 16px;
     text-align: center;
     user-select: none;
   }
-
+  
   .context-menu {
     position: absolute;
     background: #fff;
@@ -173,23 +192,115 @@
     border-radius: 6px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
   }
-
+  
   .context-menu div {
     padding: 8px 12px;
     cursor: pointer;
   }
-
+  
   .context-menu div:hover {
     background: #f0f0f0;
   }
-
+  
+  /* Color Picker Styles */
+  .color-input-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  
+  .color-toggle {
+    width: 24px;
+    height: 24px;
+    border: 2px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    position: relative;
+    background: white;
+  }
+  
+  .color-toggle.active {
+    background: #3b3bff;
+  }
+  
+  .color-toggle.active::after {
+    content: '✓';
+    color: white;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 14px;
+  }
+  
+  .color-preview {
+    width: 30px;
+    height: 24px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #ffffff;
+  }
+  
+  .color-picker-container {
+    position: fixed;
+    z-index: 1000;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    display: none;
+  }
+  
+  .color-picker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+  }
+  
+  .close-picker {
+    background: #ff4444;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+  
+  /* Alignment Controls */
+  .alignment-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 5px;
+    margin: 10px 0;
+  }
+  
+  .align-btn {
+    padding: 8px;
+    border: 1px solid #ddd;
+    background: white;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+  
+  .align-btn:hover {
+    background: #f0f0f0;
+  }
+  
+  .align-btn.active {
+    background: #3b3bff;
+    color: white;
+  }
+  
   /* Lua Editor Page Styles */
   .lua-editor-layout {
     display: flex;
     gap: 20px;
     height: calc(100% - 40px);
   }
-
+  
   .lua-section {
     background: white;
     border-radius: 8px;
@@ -198,45 +309,77 @@
     display: flex;
     flex-direction: column;
   }
-
+  
   .lua-editor-section {
     flex: 1;
     min-width: 400px;
   }
-
+  
   .lua-output-section {
     flex: 1;
     min-width: 400px;
   }
-
+  
   .lua-editor-section h3,
   .lua-output-section h3 {
     margin: 0 0 15px 0;
     color: #3b3bff;
     font-size: 20px;
   }
-
-  #luaEditor, #output, #editableOutput {
+  
+  #luaEditor {
     width: 100%;
     flex: 1;
-    background: #1e1e1e;
+    background: #2d2d30;
     color: #d4d4d4;
     border: 1px solid #444;
-    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
     padding: 15px;
     border-radius: 6px;
     resize: none;
     font-size: 14px;
     line-height: 1.5;
   }
-
+  
+  .code-container {
+    flex: 1;
+    border: 1px solid #444;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #2d2d30;
+  }
+  
+  .code-container pre {
+    margin: 0;
+    padding: 15px;
+    background: transparent;
+    overflow: auto;
+    height: 100%;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
+  #editableOutput {
+    width: 100%;
+    flex: 1;
+    background: #2d2d30;
+    color: #d4d4d4;
+    border: 1px solid #444;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    padding: 15px;
+    border-radius: 6px;
+    resize: none;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
   .button-group {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     margin-top: 15px;
   }
-
+  
   button, select {
     padding: 10px 15px;
     font-size: 14px;
@@ -247,28 +390,28 @@
     cursor: pointer;
     transition: all 0.3s ease;
   }
-
+  
   button:hover {
     background: #5a5aff;
     transform: translateY(-1px);
   }
-
+  
   select {
     background: #e4e4ff;
     color: black;
   }
-
+  
   .property-field {
     margin-bottom: 10px;
   }
-
+  
   .property-field label {
     display: block;
     margin-bottom: 5px;
     font-weight: bold;
     color: #333;
   }
-
+  
   .property-field input {
     width: 100%;
     padding: 8px;
@@ -276,7 +419,7 @@
     border-radius: 4px;
     font-size: 14px;
   }
-
+  
   .file-input {
     background: #4444cc;
     color: white;
@@ -286,40 +429,40 @@
     cursor: pointer;
     font-size: 14px;
   }
-
+  
   .file-input::-webkit-file-upload-button {
     display: none;
   }
-
+  
   @media (max-width: 768px) {
     .ui-builder-layout,
     .lua-editor-layout {
       flex-direction: column;
       height: auto;
     }
-
+    
     .ui-controls,
     #explorer {
       width: 100%;
       min-width: auto;
     }
-
+    
     .preview {
       height: 300px;
     }
-
+    
     .lua-section {
       min-width: auto;
     }
-
+    
     .page {
       height: auto;
     }
-
+    
     .page-container {
       height: auto;
     }
-
+    
     body {
       overflow: auto;
     }
@@ -329,7 +472,7 @@
 <body>
 
 <div class="header">
-  <h1>🎮 Roblox UI Builder</h1>
+  <h1>🎮 Roblox UI Builder - Enhanced</h1>
   <div class="page-tabs">
     <button class="tab-button active" onclick="switchPage('ui-builder')">🔧 UI Builder</button>
     <button class="tab-button" onclick="switchPage('lua-editor')">💻 Lua Editor</button>
@@ -355,7 +498,7 @@
           </label>
           <button onclick="addElement()">➕ Add Element</button>
         </div>
-
+        
         <div class="control-section">
           <h3>Mode</h3>
           <div style="display: flex; flex-direction: column; gap: 8px;">
@@ -364,25 +507,25 @@
             <button onclick="setMode('resize')">📐 Resize</button>
           </div>
         </div>
-
+        
         <div class="control-section">
           <div id="explorer">
             <b>🗂️ Explorer</b><br>
             <div id="explorerList" onclick="clearSelection()"></div>
           </div>
         </div>
-
+        
         <div class="control-section">
           <h3>Properties</h3>
           <div id="propFields"></div>
           <button onclick="applyProperties()">✅ Apply</button>
         </div>
       </div>
-
+      
       <div class="preview" id="preview"></div>
     </div>
   </div>
-
+  
   <!-- Lua Editor Page -->
   <div id="lua-editor" class="page">
     <div class="lua-editor-layout">
@@ -397,10 +540,12 @@
           <button onclick="downloadLua()">💾 Download</button>
         </div>
       </div>
-
+      
       <div class="lua-output-section lua-section">
         <h3>🤖 Generated Code</h3>
-        <textarea id="output" readonly placeholder="Generated Lua code will appear here..."></textarea>
+        <div class="code-container">
+          <pre><code id="output" class="language-lua"></code></pre>
+        </div>
         
         <h3 style="margin-top: 20px;">✏️ Editable Output</h3>
         <textarea id="editableOutput" placeholder="Edit the generated code here..."></textarea>
@@ -409,29 +554,45 @@
           <button onclick="cutText()">✂️ Cut</button>
           <button onclick="pasteText()">📎 Paste</button>
           <button onclick="downloadText()">💾 Download</button>
-          <input type="file" class="file-input" accept=".lua,.txt,text/plain" onchange="importText(event)">
+          <input type="file" class="file-input" accept=".lua,.txt,text/plain" onchange="importText(event)" />
         </div>
       </div>
     </div>
   </div>
 </div>
 
+<!-- Color Picker Container -->
+<div id="colorPickerContainer" class="color-picker-container">
+  <div class="color-picker-header">
+    <h4>Choose Color</h4>
+    <button class="close-picker" onclick="closeColorPicker()">✕</button>
+  </div>
+  <div id="colorPicker"></div>
+  <div style="margin-top: 15px;">
+    <button onclick="applyColor()">Apply Color</button>
+    <button onclick="closeColorPicker()">Cancel</button>
+  </div>
+</div>
+
 <script>
+// Global variables
+let idCounter = 0, selected = null, currentParent = null, clipboard = null, mode = 'move';
+let isDraggingOrResizing = false;
+let colorPicker = null;
+let currentColorField = null;
+
 // Page switching functionality
 function switchPage(pageId) {
-  // Update tab buttons
   document.querySelectorAll('.tab-button').forEach(btn => {
     btn.classList.remove('active');
   });
   event.target.classList.add('active');
-
-  // Update pages
+  
   document.querySelectorAll('.page').forEach(page => {
     page.classList.remove('active');
   });
   document.getElementById(pageId).classList.add('active');
-
-  // Refresh data when switching to UI builder
+  
   if (pageId === 'ui-builder') {
     refresh();
   }
@@ -442,13 +603,10 @@ function refresh() {
   generateCode();
 }
 
-let idCounter = 0, selected = null, currentParent = null, clipboard = null, mode = 'move';
-let isDraggingOrResizing = false;
-
 const typeProps = {
-  Frame: ['Name', 'Left', 'Top', 'Width', 'Height', 'Color'],
-  TextLabel: ['Name', 'Left', 'Top', 'Width', 'Height', 'Color', 'Text'],
-  TextButton: ['Name', 'Left', 'Top', 'Width', 'Height', 'Color', 'Text'],
+  Frame: ['Name', 'Left', 'Top', 'Width', 'Height', 'Color', 'TextXAlignment', 'TextYAlignment'],
+  TextLabel: ['Name', 'Left', 'Top', 'Width', 'Height', 'Color', 'Text', 'TextColor', 'TextXAlignment', 'TextYAlignment'],
+  TextButton: ['Name', 'Left', 'Top', 'Width', 'Height', 'Color', 'Text', 'TextColor', 'TextXAlignment', 'TextYAlignment'],
   ImageLabel: ['Name', 'Left', 'Top', 'Width', 'Height', 'Color', 'Image'],
   Folder: ['Name'],
   Model: ['Name']
@@ -463,6 +621,11 @@ const typeIcons = {
   Model: '📦'
 };
 
+const alignmentOptions = {
+  TextXAlignment: ['Left', 'Center', 'Right'],
+  TextYAlignment: ['Top', 'Center', 'Bottom']
+};
+
 function setMode(newMode) {
   mode = newMode;
   updateMode();
@@ -471,22 +634,35 @@ function setMode(newMode) {
 function addElement() {
   const t = document.getElementById('instanceType').value;
   idCounter++;
-
+  
   const e = document.createElement('div');
   e.className = 'ui-element';
-
+  
   const isVisual = !['Folder', 'Model'].includes(t);
-
+  const isText = ['TextLabel', 'TextButton'].includes(t);
+  
+  if (isText) {
+    e.classList.add('text-element');
+  }
+  
   Object.assign(e.dataset, {
     id: idCounter,
     type: t,
     name: `${t}${idCounter}`,
-    parent: selected?.dataset?.id || 'ScreenGui'
+    parent: selected?.dataset?.id || 'ScreenGui',
+    textxalignment: 'Center',
+    textyalignment: 'Center'
   });
-
+  
   if (isVisual) {
     e.style.cssText = 'left:50px; top:50px; width:100px; height:50px;';
-    ['color', 'text', 'image'].forEach(p => delete e.dataset[p]);
+    
+    if (isText) {
+      e.textContent = `${t}${idCounter}`;
+      e.dataset.text = `${t}${idCounter}`;
+      e.dataset.textcolor = '0,0,0';
+    }
+    
     e.addEventListener('click', ev => {
       ev.stopPropagation();
       if (!isDraggingOrResizing) select(e, true);
@@ -496,7 +672,7 @@ function addElement() {
   } else {
     document.getElementById('preview').appendChild(e);
   }
-
+  
   e.dataset._expanded = true;
   select(e, true);
   refresh();
@@ -526,6 +702,77 @@ function updateHighlight() {
   });
 }
 
+function createColorField(propName, value) {
+  const container = document.createElement('div');
+  container.className = 'color-input-group';
+  
+  const toggle = document.createElement('div');
+  toggle.className = 'color-toggle';
+  toggle.onclick = () => {
+    toggle.classList.toggle('active');
+    const input = container.querySelector('input');
+    if (toggle.classList.contains('active')) {
+      showColorPicker(input, propName);
+    }
+  };
+  
+  const preview = document.createElement('div');
+  preview.className = 'color-preview';
+  if (value) {
+    const [r, g, b] = value.split(',').map(Number);
+    preview.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+  }
+  
+  const input = document.createElement('input');
+  input.id = `prop${propName}`;
+  input.value = value || '';
+  input.placeholder = 'R,G,B (e.g., 255,0,0)';
+  input.style.flex = '1';
+  input.oninput = () => {
+    if (input.value) {
+      try {
+        const [r, g, b] = input.value.split(',').map(Number);
+        if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+          preview.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+        }
+      } catch (e) {}
+    } else {
+      preview.style.backgroundColor = '#ffffff';
+    }
+  };
+  
+  container.appendChild(toggle);
+  container.appendChild(preview);
+  container.appendChild(input);
+  
+  return container;
+}
+
+function createAlignmentField(propName, value) {
+  const container = document.createElement('div');
+  container.className = 'alignment-controls';
+  
+  const options = alignmentOptions[propName];
+  options.forEach((option, index) => {
+    const btn = document.createElement('button');
+    btn.className = 'align-btn';
+    btn.textContent = option;
+    btn.type = 'button';
+    if (value === option) btn.classList.add('active');
+    
+    btn.onclick = () => {
+      container.querySelectorAll('.align-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      btn.dataset.value = option;
+    };
+    
+    container.appendChild(btn);
+  });
+  
+  container.dataset.propName = propName;
+  return container;
+}
+
 function renderProps() {
   const cont = document.getElementById('propFields');
   cont.innerHTML = '';
@@ -534,8 +781,10 @@ function renderProps() {
   typeProps[selected.dataset.type].forEach(p => {
     const div = document.createElement('div');
     div.className = 'property-field';
-    div.innerHTML = `<label>${p}:</label><input id="prop${p}" autocomplete="off" />`;
-    cont.appendChild(div);
+    
+    const label = document.createElement('label');
+    label.textContent = p + ':';
+    div.appendChild(label);
     
     let val;
     if (['Left', 'Top', 'Width', 'Height'].includes(p)) {
@@ -543,38 +792,149 @@ function renderProps() {
     } else {
       val = selected.dataset[p.toLowerCase()] || '';
     }
-    document.getElementById('prop' + p).value = val;
+    
+    if (p === 'Color' || p === 'TextColor') {
+      div.appendChild(createColorField(p, val));
+    } else if (p === 'TextXAlignment' || p === 'TextYAlignment') {
+      div.appendChild(createAlignmentField(p, val));
+    } else {
+      const input = document.createElement('input');
+      input.id = `prop${p}`;
+      input.value = val;
+      input.autocomplete = 'off';
+      div.appendChild(input);
+    }
+    
+    cont.appendChild(div);
   });
 }
 
 function applyProperties() {
   if (!selected) return;
   typeProps[selected.dataset.type].forEach(p => {
-    const v = document.getElementById('prop' + p).value;
-    if (['Left', 'Top', 'Width', 'Height'].includes(p)) {
-      if (!isNaN(parseInt(v))) selected.style[p.toLowerCase()] = v + 'px';
+    if (p === 'TextXAlignment' || p === 'TextYAlignment') {
+      const container = document.querySelector(`[data-prop-name="${p}"]`);
+      const activeBtn = container?.querySelector('.align-btn.active');
+      if (activeBtn) {
+        selected.dataset[p.toLowerCase()] = activeBtn.textContent;
+        updateElementAlignment();
+      }
     } else {
-      selected.dataset[p.toLowerCase()] = v;
+      const input = document.getElementById('prop' + p);
+      if (!input) return;
+      
+      const v = input.value;
+      if (['Left', 'Top', 'Width', 'Height'].includes(p)) {
+        if (!isNaN(parseInt(v))) selected.style[p.toLowerCase()] = v + 'px';
+      } else {
+        selected.dataset[p.toLowerCase()] = v;
+        
+        if (p === 'Text' && selected.classList.contains('text-element')) {
+          selected.textContent = v;
+        }
+        
+        if (p === 'Color') {
+          try {
+            const [r, g, b] = v.split(',').map(Number);
+            if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+              selected.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+            }
+          } catch (e) {}
+        }
+        
+        if (p === 'TextColor' && selected.classList.contains('text-element')) {
+          try {
+            const [r, g, b] = v.split(',').map(Number);
+            if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+              selected.style.color = `rgb(${r}, ${g}, ${b})`;
+            }
+          } catch (e) {}
+        }
+      }
     }
   });
   refresh();
 }
 
+function updateElementAlignment() {
+  if (!selected || !selected.classList.contains('text-element')) return;
+  
+  const xAlign = selected.dataset.textxalignment || 'Center';
+  const yAlign = selected.dataset.textyalignment || 'Center';
+  
+  const xMap = { Left: 'flex-start', Center: 'center', Right: 'flex-end' };
+  const yMap = { Top: 'flex-start', Center: 'center', Bottom: 'flex-end' };
+  
+  selected.style.justifyContent = xMap[xAlign];
+  selected.style.alignItems = yMap[yAlign];
+}
+
+// Color Picker Functions
+function showColorPicker(input, propName) {
+  currentColorField = input;
+  const container = document.getElementById('colorPickerContainer');
+  container.style.display = 'block';
+  
+  const rect = input.getBoundingClientRect();
+  container.style.left = Math.min(rect.left, window.innerWidth - 300) + 'px';
+  container.style.top = Math.min(rect.bottom + 10, window.innerHeight - 400) + 'px';
+  
+  if (colorPicker) {
+    colorPicker.destroy();
+  }
+  
+  let initialColor = '#ffffff';
+  if (input.value) {
+    try {
+      const [r, g, b] = input.value.split(',').map(Number);
+      if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+        initialColor = `rgb(${r}, ${g}, ${b})`;
+      }
+    } catch (e) {}
+  }
+  
+  colorPicker = new iro.ColorPicker('#colorPicker', {
+    width: 200,
+    color: initialColor,
+    borderWidth: 1,
+    borderColor: "#fff"
+  });
+}
+
+function applyColor() {
+  if (colorPicker && currentColorField) {
+    const rgb = colorPicker.color.rgb;
+    const colorString = `${Math.round(rgb.r)},${Math.round(rgb.g)},${Math.round(rgb.b)}`;
+    currentColorField.value = colorString;
+    currentColorField.oninput();
+  }
+  closeColorPicker();
+}
+
+function closeColorPicker() {
+  document.getElementById('colorPickerContainer').style.display = 'none';
+  currentColorField = null;
+  if (colorPicker) {
+    colorPicker.destroy();
+    colorPicker = null;
+  }
+}
+
 function renderExplorer() {
   const root = document.getElementById('explorerList');
   root.innerHTML = '';
-
+  
   function build(pid, lvl) {
     [...document.querySelectorAll('.ui-element,[data-type="Folder"],[data-type="Model"]')].forEach(e => {
       if (e.dataset.parent === pid) {
         const row = document.createElement('div');
         row.className = 'explorer-item' + (e === selected ? ' selected' : '');
         row.style.paddingLeft = (lvl * 12) + 'px';
-
+        
         const toggle = document.createElement('span');
         toggle.className = 'toggle';
         const hasChildren = [...document.querySelectorAll('[data-parent="' + e.dataset.id + '"]')].length > 0;
-
+        
         if (hasChildren) {
           if (!e.dataset._expanded) e.dataset._expanded = 'false';
           toggle.innerText = (e.dataset._expanded === 'true') ? '▼' : '▶';
@@ -587,16 +947,16 @@ function renderExplorer() {
           toggle.innerText = '';
         }
         row.appendChild(toggle);
-
+        
         const ico = document.createElement('span');
         ico.className = 'icon';
         ico.innerText = typeIcons[e.dataset.type] || '?';
         row.appendChild(ico);
-
+        
         const nameSpan = document.createElement('span');
         nameSpan.textContent = e.dataset.name;
         row.appendChild(nameSpan);
-
+        
         row.onclick = () => {
           if (!isDraggingOrResizing) select(e, false);
         };
@@ -605,12 +965,12 @@ function renderExplorer() {
           contextMenu(ev.clientX, ev.clientY, e);
         };
         root.appendChild(row);
-
+        
         if (e.dataset._expanded === 'true') build(e.dataset.id, lvl + 1);
       }
     });
   }
-
+  
   build('ScreenGui', 0);
 }
 
@@ -701,11 +1061,11 @@ function interactElement(el) {
       move(event) {
         let x = parseFloat(el.style.left) + event.dx;
         let y = parseFloat(el.style.top) + event.dy;
-
+        
         const clamped = clampPosition(x, y, el.offsetWidth, el.offsetHeight, preview);
         el.style.left = clamped.x + 'px';
         el.style.top = clamped.y + 'px';
-
+        
         if (el === selected) {
           renderProps();
           generateCode();
@@ -730,15 +1090,15 @@ function interactElement(el) {
         const previewRect = preview.getBoundingClientRect();
         let newWidth = event.rect.width;
         let newHeight = event.rect.height;
-
+        
         const maxWidth = preview.clientWidth - parseFloat(el.style.left);
         const maxHeight = preview.clientHeight - parseFloat(el.style.top);
         if (newWidth > maxWidth) newWidth = maxWidth;
         if (newHeight > maxHeight) newHeight = maxHeight;
-
+        
         el.style.width = newWidth + 'px';
         el.style.height = newHeight + 'px';
-
+        
         if (el === selected) {
           renderProps();
           generateCode();
@@ -758,16 +1118,47 @@ function generateCode() {
     code += `local ${nm} = Instance.new("${t}")\n`;
     if (!['Folder', 'Model'].includes(t)) {
       const l = parseInt(e.style.left), tp = parseInt(e.style.top), w = parseInt(e.style.width), h = parseInt(e.style.height);
-      const [r, g, b] = (e.dataset.color || '255,255,255').split(',').map(Number);
       code += `${nm}.Size = UDim2.new(0, ${w}, 0, ${h})\n${nm}.Position = UDim2.new(0, ${l}, 0, ${tp})\n`;
-      code += `${nm}.BackgroundColor3 = Color3.fromRGB(${r},${g},${b})\n`;
+      
+      // Background Color
+      if (e.dataset.color) {
+        const [r, g, b] = e.dataset.color.split(',').map(Number);
+        code += `${nm}.BackgroundColor3 = Color3.fromRGB(${r}, ${g}, ${b})\n`;
+      } else {
+        code += `${nm}.BackgroundColor3 = Color3.fromRGB(255, 255, 255)\n`;
+      }
+      
+      // Text properties
+      if (e.dataset.text && /Text(Label|Button)/.test(t)) {
+        code += `${nm}.Text = "${e.dataset.text}"\n`;
+        
+        if (e.dataset.textcolor) {
+          const [r, g, b] = e.dataset.textcolor.split(',').map(Number);
+          code += `${nm}.TextColor3 = Color3.fromRGB(${r}, ${g}, ${b})\n`;
+        }
+        
+        if (e.dataset.textxalignment) {
+          code += `${nm}.TextXAlignment = Enum.TextXAlignment.${e.dataset.textxalignment}\n`;
+        }
+        
+        if (e.dataset.textyalignment) {
+          code += `${nm}.TextYAlignment = Enum.TextYAlignment.${e.dataset.textyalignment}\n`;
+        }
+      }
+      
+      // Image property
+      if (e.dataset.image) {
+        code += `${nm}.Image = "rbxassetid://${e.dataset.image}"\n`;
+      }
     }
-    if (e.dataset.text && /Text(Label|Button)/.test(t)) code += `${nm}.Text = "${e.dataset.text}"\n`;
-    if (e.dataset.image) code += `${nm}.Image = "rbxassetid://${e.dataset.image}"\n`;
     code += `${nm}.Parent = ${e.dataset.parent}\n\n`;
   });
-  document.getElementById('output').value = code;
+  
+  document.getElementById('output').textContent = code;
   document.getElementById('editableOutput').value = code;
+  
+  // Apply syntax highlighting
+  Prism.highlightElement(document.getElementById('output'));
 }
 
 // Lua Editor Functions
@@ -856,8 +1247,14 @@ function importText(event) {
 
 // Initialize
 document.getElementById('preview').addEventListener('click', clearSelection);
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#colorPickerContainer') && !e.target.closest('.color-toggle')) {
+    closeColorPicker();
+  }
+});
 refresh();
 </script>
 
 </body>
 </html>
+    
