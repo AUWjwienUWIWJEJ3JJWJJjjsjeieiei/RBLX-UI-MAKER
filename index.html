@@ -606,9 +606,9 @@ function refresh() {
 
 const typeProps = {
   ScreenGui: ['Name', 'Parent'],
-  Frame: ['Name', 'Left', 'Top', 'Width', 'Height', 'Color'],
-  TextLabel: ['Name', 'Left', 'Top', 'Width', 'Height', 'Color', 'Text', 'TextColor', 'TextSize', 'TextXAlignment', 'TextYAlignment'],
-  TextButton: ['Name', 'Left', 'Top', 'Width', 'Height', 'Color', 'Text', 'TextColor', 'TextSize', 'TextXAlignment', 'TextYAlignment'],
+  Frame: ['Name', 'Left', 'Top', 'Width', 'Height', 'Color', 'TextXAlignment', 'TextYAlignment'],
+  TextLabel: ['Name', 'Left', 'Top', 'Width', 'Height', 'Color', 'Text', 'TextColor', 'TextXAlignment', 'TextYAlignment'],
+  TextButton: ['Name', 'Left', 'Top', 'Width', 'Height', 'Color', 'Text', 'TextColor', 'TextXAlignment', 'TextYAlignment'],
   ImageLabel: ['Name', 'Left', 'Top', 'Width', 'Height', 'Color', 'Image'],
   Folder: ['Name'],
   Model: ['Name']
@@ -688,13 +688,7 @@ function clearSelection() {
   currentParent = null;
   document.getElementById('propFields').innerHTML = '';
   updateHighlight();
-  
-  // Also clear any active explorer selection
-  document.querySelectorAll('.explorer-item').forEach(item => {
-    item.classList.remove('selected');
-  });
 }
-
 
 function select(e, focusExplorer) {
   if (isDraggingOrResizing) return;
@@ -819,7 +813,6 @@ function renderProps() {
   });
 }
 
-
 function applyProperties() {
   if (!selected) return;
   typeProps[selected.dataset.type].forEach(p => {
@@ -844,10 +837,6 @@ function applyProperties() {
           selected.textContent = v;
         }
         
-        if (p === 'TextSize' && selected.classList.contains('text-element')) {
-          selected.style.fontSize = v + 'px';
-        }
-        
         if (p === 'Color') {
           try {
             const [r, g, b] = v.split(',').map(Number);
@@ -870,8 +859,6 @@ function applyProperties() {
   });
   refresh();
 }
-
-
 
 function updateElementAlignment() {
   if (!selected || !selected.classList.contains('text-element')) return;
@@ -937,20 +924,12 @@ function closeColorPicker() {
   }
 }
 
-
 function renderExplorer() {
   const root = document.getElementById('explorerList');
   root.innerHTML = '';
   
-  // Add click handler to explorer title
-  const title = root.previousElementSibling;
-  if (title && title.tagName === 'B') {
-    title.style.cursor = 'pointer';
-    title.onclick = clearSelection;
-  }
-  
   function build(pid, lvl) {
-    [...document.querySelectorAll('.ui-element,[data-type="Folder"],[data-type="Model"],[data-type="ScreenGui"]')].forEach(e => {
+    [...document.querySelectorAll('.ui-element,[data-type="Folder"],[data-type="Model"]')].forEach(e => {
       if (e.dataset.parent === pid) {
         const row = document.createElement('div');
         row.className = 'explorer-item' + (e === selected ? ' selected' : '');
@@ -996,9 +975,8 @@ function renderExplorer() {
     });
   }
   
-  build('CoreGui', 0);
+  build('ScreenGui', 0);
 }
-
 
 function contextMenu(x, y, el) {
   const menu = document.createElement('div');
@@ -1138,26 +1116,15 @@ function interactElement(el) {
 }
 
 function generateCode() {
-  let code = '';
-  
-  // Handle ScreenGui elements first
-  [...document.querySelectorAll('[data-type="ScreenGui"]')].forEach(e => {
-    const nm = e.dataset.name;
-    const parent = e.dataset.parent || 'game:GetService("CoreGui")';
-    code += `local ${nm} = Instance.new("ScreenGui")\n`;
-    code += `${nm}.Parent = ${parent}\n\n`;
-  });
-  
-  // Handle other elements
-  [...document.querySelectorAll('.ui-element:not([data-type="ScreenGui"])')].forEach(e => {
+  let code = 'local ScreenGui = Instance.new("ScreenGui")\nScreenGui.Parent = game:GetService("CoreGui")\n';
+  [...document.querySelectorAll('.ui-element,[data-type="Folder"],[data-type="Model"]')].forEach(e => {
     const nm = e.dataset.name, t = e.dataset.type;
     code += `local ${nm} = Instance.new("${t}")\n`;
-    
     if (!['Folder', 'Model'].includes(t)) {
       const l = parseInt(e.style.left), tp = parseInt(e.style.top), w = parseInt(e.style.width), h = parseInt(e.style.height);
       code += `${nm}.Size = UDim2.new(0, ${w}, 0, ${h})\n${nm}.Position = UDim2.new(0, ${l}, 0, ${tp})\n`;
       
-      // Background Color (Color3 is for background)
+      // Background Color
       if (e.dataset.color) {
         const [r, g, b] = e.dataset.color.split(',').map(Number);
         code += `${nm}.BackgroundColor3 = Color3.fromRGB(${r}, ${g}, ${b})\n`;
@@ -1169,14 +1136,9 @@ function generateCode() {
       if (e.dataset.text && /Text(Label|Button)/.test(t)) {
         code += `${nm}.Text = "${e.dataset.text}"\n`;
         
-        // TextColor3 is for the actual text color
         if (e.dataset.textcolor) {
           const [r, g, b] = e.dataset.textcolor.split(',').map(Number);
           code += `${nm}.TextColor3 = Color3.fromRGB(${r}, ${g}, ${b})\n`;
-        }
-        
-        if (e.dataset.textsize) {
-          code += `${nm}.TextSize = ${e.dataset.textsize}\n`;
         }
         
         if (e.dataset.textxalignment) {
@@ -1203,9 +1165,6 @@ function generateCode() {
   Prism.highlightElement(document.getElementById('output'));
 }
 
-
-
-
 // Lua Editor Functions
 function cutLua() {
   const editor = document.getElementById('luaEditor');
@@ -1227,10 +1186,9 @@ function pasteLua() {
   });
 }
 
-// Add this new function
+// new function for syntax
 function highlightLuaEditor() {
-  // This would require implementing CodeMirror or similar
-  // For now, just ensure consistent styling
+  // This would require implementing CodeMirror or similar.
   const editor = document.getElementById('luaEditor');
   editor.style.fontFamily = "'Monaco', 'Menlo', 'Ubuntu Mono', monospace";
 }
@@ -1276,7 +1234,6 @@ function pasteText() {
   const editor = document.getElementById('editableOutput');
   navigator.clipboard.readText().then(text => {
     editor.value += text;
-    // Update the display code too
     document.getElementById('output').textContent = editor.value;
     Prism.highlightElement(document.getElementById('output'));
   });
@@ -1314,3 +1271,4 @@ refresh();
 
 </body>
 </html>
+    
