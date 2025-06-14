@@ -787,22 +787,22 @@ function renderProps() {
   const cont = document.getElementById('propFields');
   cont.innerHTML = '';
   if (!selected) return;
-  
+
   typeProps[selected.dataset.type].forEach(p => {
     const div = document.createElement('div');
     div.className = 'property-field';
-    
+
     const label = document.createElement('label');
     label.textContent = p + ':';
     div.appendChild(label);
-    
+
     let val;
     if (['Left', 'Top', 'Width', 'Height'].includes(p)) {
       val = parseInt(selected.style[p.toLowerCase()]) || 0;
     } else {
       val = selected.dataset[p.toLowerCase()] || '';
     }
-    
+
     if (p === 'Color' || p === 'TextColor') {
       div.appendChild(createColorField(p, val));
     } else if (p === 'TextXAlignment' || p === 'TextYAlignment') {
@@ -814,14 +814,34 @@ function renderProps() {
       input.autocomplete = 'off';
       div.appendChild(input);
     }
-    
+
     cont.appendChild(div);
   });
-}
 
+  // ✅ Add this block *after* the forEach loop
+  if (selected.dataset.type === "ScreenGui") {
+    const div = document.createElement('div');
+    div.className = 'property-field';
+
+    const label = document.createElement('label');
+    label.textContent = 'Include in Generated Code: ';
+    div.appendChild(label);
+
+    const chk = document.createElement('input');
+    chk.type = 'checkbox';
+    chk.checked = selected.dataset.include === "true";
+    chk.onchange = () => {
+      selected.dataset.include = chk.checked ? "true" : "";
+      generateCode();
+    };
+    div.appendChild(chk);
+    cont.appendChild(div);
+  }
+}
 
 function applyProperties() {
   if (!selected) return;
+
   typeProps[selected.dataset.type].forEach(p => {
     if (p === 'TextXAlignment' || p === 'TextYAlignment') {
       const container = document.querySelector(`[data-prop-name="${p}"]`);
@@ -833,21 +853,28 @@ function applyProperties() {
     } else {
       const input = document.getElementById('prop' + p);
       if (!input) return;
-      
+
       const v = input.value;
+
       if (['Left', 'Top', 'Width', 'Height'].includes(p)) {
-        if (!isNaN(parseInt(v))) selected.style[p.toLowerCase()] = v + 'px';
+        if (!isNaN(parseInt(v))) {
+          selected.style[p.toLowerCase()] = v + 'px';
+        }
       } else {
         selected.dataset[p.toLowerCase()] = v;
-        
+
         if (p === 'Text' && selected.classList.contains('text-element')) {
           selected.textContent = v;
         }
-        
+
         if (p === 'TextSize' && selected.classList.contains('text-element')) {
-          selected.style.fontSize = v + 'px';
+          if (v === 'auto') {
+            selected.style.fontSize = 'inherit';
+          } else {
+            selected.style.fontSize = v + 'px';
+          }
         }
-        
+
         if (p === 'Color') {
           try {
             const [r, g, b] = v.split(',').map(Number);
@@ -856,7 +883,7 @@ function applyProperties() {
             }
           } catch (e) {}
         }
-        
+
         if (p === 'TextColor' && selected.classList.contains('text-element')) {
           try {
             const [r, g, b] = v.split(',').map(Number);
@@ -868,10 +895,9 @@ function applyProperties() {
       }
     }
   });
+
   refresh();
 }
-
-
 
 function updateElementAlignment() {
   if (!selected || !selected.classList.contains('text-element')) return;
@@ -941,25 +967,25 @@ function closeColorPicker() {
 function renderExplorer() {
   const root = document.getElementById('explorerList');
   root.innerHTML = '';
-  
+
   // Add click handler to explorer title
   const title = root.previousElementSibling;
   if (title && title.tagName === 'B') {
     title.style.cursor = 'pointer';
     title.onclick = clearSelection;
   }
-  
+
   function build(pid, lvl) {
     [...document.querySelectorAll('.ui-element,[data-type="Folder"],[data-type="Model"],[data-type="ScreenGui"]')].forEach(e => {
       if (e.dataset.parent === pid) {
         const row = document.createElement('div');
         row.className = 'explorer-item' + (e === selected ? ' selected' : '');
         row.style.paddingLeft = (lvl * 12) + 'px';
-        
+
         const toggle = document.createElement('span');
         toggle.className = 'toggle';
         const hasChildren = [...document.querySelectorAll('[data-parent="' + e.dataset.id + '"]')].length > 0;
-        
+
         if (hasChildren) {
           if (!e.dataset._expanded) e.dataset._expanded = 'false';
           toggle.innerText = (e.dataset._expanded === 'true') ? '▼' : '▶';
@@ -972,30 +998,35 @@ function renderExplorer() {
           toggle.innerText = '';
         }
         row.appendChild(toggle);
-        
+
         const ico = document.createElement('span');
         ico.className = 'icon';
         ico.innerText = typeIcons[e.dataset.type] || '?';
         row.appendChild(ico);
-        
+
         const nameSpan = document.createElement('span');
         nameSpan.textContent = e.dataset.name;
         row.appendChild(nameSpan);
-        
+
         row.onclick = () => {
-          if (!isDraggingOrResizing) select(e, false);
+          if (!isDraggingOrResizing) {
+            select(e, false);
+            e.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
         };
+
         row.oncontextmenu = ev => {
           ev.preventDefault();
           contextMenu(ev.clientX, ev.clientY, e);
         };
+
         root.appendChild(row);
-        
+
         if (e.dataset._expanded === 'true') build(e.dataset.id, lvl + 1);
       }
     });
   }
-  
+
   build('CoreGui', 0);
 }
 
@@ -1075,31 +1106,34 @@ function clampPosition(x, y, width, height, container) {
 
 function interactElement(el) {
   const preview = document.getElementById('preview');
+
+  // Add a dedicated drag handle if not already present
+  if (!el.querySelector('.drag-handle')) {
+    const handle = document.createElement('div');
+    handle.className = 'drag-handle';
+    handle.style = 'position:absolute;top:0;left:0;width:100%;height:100%;cursor:move;';
+    el.appendChild(handle);
+  }
+
   interact(el).draggable({
+    allowFrom: '.drag-handle',
     inertia: false,
-    modifiers: [
-      interact.modifiers.restrictRect({ restriction: 'parent' })
-    ],
+    modifiers: [interact.modifiers.restrictRect({ restriction: 'parent' })],
     listeners: {
-      start() {
-        isDraggingOrResizing = true;
-      },
+      start() { isDraggingOrResizing = true; },
       move(event) {
+        const parent = document.querySelector(`[data-id="${el.dataset.parent}"]`) || preview;
         let x = parseFloat(el.style.left) + event.dx;
         let y = parseFloat(el.style.top) + event.dy;
-        
-        const clamped = clampPosition(x, y, el.offsetWidth, el.offsetHeight, preview);
+        const clamped = clampPosition(x, y, el.offsetWidth, el.offsetHeight, parent);
         el.style.left = clamped.x + 'px';
         el.style.top = clamped.y + 'px';
-        
         if (el === selected) {
           renderProps();
           generateCode();
         }
       },
-      end() {
-        isDraggingOrResizing = false;
-      }
+      end() { isDraggingOrResizing = false; }
     }
   }).resizable({
     edges: { bottom: true, right: true },
@@ -1109,30 +1143,21 @@ function interactElement(el) {
       interact.modifiers.restrictSize({ min: { width: 20, height: 20 } })
     ],
     listeners: {
-      start() {
-        isDraggingOrResizing = true;
-      },
+      start() { isDraggingOrResizing = true; },
       move(event) {
-        const previewRect = preview.getBoundingClientRect();
+        const parent = document.querySelector(`[data-id="${el.dataset.parent}"]`) || preview;
         let newWidth = event.rect.width;
         let newHeight = event.rect.height;
-        
-        const maxWidth = preview.clientWidth - parseFloat(el.style.left);
-        const maxHeight = preview.clientHeight - parseFloat(el.style.top);
-        if (newWidth > maxWidth) newWidth = maxWidth;
-        if (newHeight > maxHeight) newHeight = maxHeight;
-        
-        el.style.width = newWidth + 'px';
-        el.style.height = newHeight + 'px';
-        
+        const maxWidth = parent.clientWidth - parseFloat(el.style.left);
+        const maxHeight = parent.clientHeight - parseFloat(el.style.top);
+        el.style.width = Math.min(newWidth, maxWidth) + 'px';
+        el.style.height = Math.min(newHeight, maxHeight) + 'px';
         if (el === selected) {
           renderProps();
           generateCode();
         }
       },
-      end() {
-        isDraggingOrResizing = false;
-      }
+      end() { isDraggingOrResizing = false; }
     }
   });
 }
@@ -1142,6 +1167,8 @@ function generateCode() {
   
   // Handle ScreenGui elements first
   [...document.querySelectorAll('[data-type="ScreenGui"]')].forEach(e => {
+  if (e.dataset.include !== "true") return;
+  if (e.dataset.include !== "true") return;
     const nm = e.dataset.name;
     const parent = e.dataset.parent || 'game:GetService("CoreGui")';
     code += `local ${nm} = Instance.new("ScreenGui")\n`;
